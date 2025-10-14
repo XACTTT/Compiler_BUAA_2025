@@ -1,8 +1,8 @@
-package frontend.ast;
+package frontend.ast.terminal;
 
 import frontend.Token;
 
-public class TokenNode extends TerminalNode{
+public class TokenNode extends TerminalNode {
     private final Token token;
     public TokenNode(Token token) {
         this.token = token;

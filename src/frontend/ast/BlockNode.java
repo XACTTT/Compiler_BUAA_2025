@@ -9,8 +9,8 @@ import java.util.ArrayList;
 Block -> '{' { BlockItem } '}'
 BlockItem -> Decl | Stmt
 */
-public class BlockNode extends STMTnode {
-    public final ArrayList<ASTnode> items= new ArrayList<>();
+public class BlockNode extends ASTnode {
+
 
 
 }
