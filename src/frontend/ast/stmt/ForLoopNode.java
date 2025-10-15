@@ -1,9 +1,10 @@
 package frontend.ast.stmt;
 
+import frontend.ast.ASTnode;
 import frontend.ast.SyntaxType;
 
-public class ContinueStmtNode extends STMTnode {
-    public ContinueStmtNode(){
+public class ForLoopNode extends ASTnode {
+    public ForLoopNode() {
         super(SyntaxType.STMT);
     }
 }

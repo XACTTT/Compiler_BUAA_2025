@@ -10,7 +10,9 @@ Block -> '{' { BlockItem } '}'
 BlockItem -> Decl | Stmt
 */
 public class BlockNode extends ASTnode {
-
+public BlockNode() {
+    super(SyntaxType.BLOCK);
+}
 
 
 }

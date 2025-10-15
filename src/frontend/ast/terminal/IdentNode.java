@@ -1,11 +1,14 @@
-package frontend.ast;
+package frontend.ast.terminal;
 
 import frontend.Token;
-import frontend.ast.terminal.TerminalNode;
+import frontend.ast.SyntaxType;
+
+import javax.swing.text.Position;
 
 public class IdentNode extends TerminalNode {
-    private final Token token;
+
     public IdentNode(Token token) {
+        super(SyntaxType.IDENT);
         this.token = token;
     }
 }

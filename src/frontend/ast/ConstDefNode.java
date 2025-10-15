@@ -7,7 +7,9 @@ import java.util.ArrayList;
 ConstDef -> Ident [ '[' ConstExp ']' ] '=' ConstInitVal
 */
 public class ConstDefNode extends ASTnode{
-
+    public ConstDefNode() {
+        super(SyntaxType.CONST_DEF);
+    }
 
 
 }

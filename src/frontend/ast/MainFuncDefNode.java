@@ -4,9 +4,9 @@ package frontend.ast;
 MainFuncDef -> 'int' 'main' '(' ')' Block
 */
 public class MainFuncDefNode extends ASTnode {
-    public final BlockNode body;
+
 
     public MainFuncDefNode() {
-        this.body = new BlockNode();
+    super(SyntaxType.MAIN_FUNC_DEF);
     }
 }

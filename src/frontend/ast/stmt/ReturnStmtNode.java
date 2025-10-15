@@ -1,16 +1,14 @@
 package frontend.ast.stmt;
 
-import frontend.ast.EXPnode;
-
-import java.util.Optional;
+import frontend.ast.SyntaxType;
+import org.w3c.dom.Node;
 
 /*
 Return 语句 'return' [Exp] ';'
 */
 public class ReturnStmtNode extends STMTnode {
-    public final Optional<EXPnode> returnValue;
-
-    public ReturnStmtNode(Optional<EXPnode> returnValue) {
-        this.returnValue = returnValue;
+    public ReturnStmtNode() {
+        super(SyntaxType.STMT);
     }
+
 }

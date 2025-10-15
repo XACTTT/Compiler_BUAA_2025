@@ -9,5 +9,7 @@ import java.util.ArrayList;
 ConstDecl -> 'const' BType ConstDef { ',' ConstDef } ';'
 */
 public class ConstDeclNode extends DECLnode{
-
+    public ConstDeclNode() {
+        super(SyntaxType.CONST_DECL);
+    }
 }

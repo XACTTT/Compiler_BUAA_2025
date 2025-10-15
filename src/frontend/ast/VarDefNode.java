@@ -7,5 +7,7 @@ import java.util.Optional;
 VarDef -> Ident [ '[' ConstExp ']' ] | Ident [ '[' ConstExp ']' ] '=' InitVal
 */
 public class VarDefNode extends ASTnode{
-
+    public VarDefNode(){
+        super(SyntaxType.VAR_DEF);
+    }
 }

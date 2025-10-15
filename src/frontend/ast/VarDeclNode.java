@@ -9,5 +9,7 @@ import java.util.ArrayList;
 VarDecl -> [ 'static' ] BType VarDef { ',' VarDef } ';'
 */
 public class VarDeclNode extends DECLnode{
-
+public VarDeclNode(){
+    super(SyntaxType.VAR_DECL);
+}
 }
