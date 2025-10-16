@@ -422,7 +422,7 @@ public class Parser {
             forLoopNode.addNode(parseCond());
         }
         forLoopNode.addNode(parseToken());
-        if (!peek(0).getTokenType().equals(Token.TokenType.RPARENT)) {
+        if (peek(0).getTokenType().equals(Token.TokenType.IDENFR)) {
             forLoopNode.addNode(parseForStmt());
         }
         if (peek(0) != null && peek(0).getTokenType() == Token.TokenType.RPARENT) {
@@ -692,7 +692,12 @@ public class Parser {
                 peek(1).getTokenType().equals(Token.TokenType.LPARENT)) {
             unaryExpNode.addNode(parseIdent());
             unaryExpNode.addNode(parseToken()); // '('
-            if (!peek(0).getTokenType().equals(Token.TokenType.RPARENT)) {
+            if (peek(0).getTokenType().equals(Token.TokenType.INTCON) ||
+                    peek(0).getTokenType().equals(Token.TokenType.IDENFR) ||
+                    peek(0).getTokenType().equals(Token.TokenType.PLUS) ||
+                    peek(0).getTokenType().equals(Token.TokenType.MINU) ||
+                    peek(0).getTokenType().equals(Token.TokenType.NOT) ||
+                    peek(0).getTokenType().equals(Token.TokenType.LPARENT)) {
                 unaryExpNode.addNode(parseFuncRParams());
             }
             if (peek(0).getTokenType().equals(Token.TokenType.RPARENT)) {
