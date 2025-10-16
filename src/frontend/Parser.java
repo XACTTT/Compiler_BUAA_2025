@@ -472,7 +472,17 @@ public class Parser {
     public ReturnStmtNode parseReturnStmt() {
         ReturnStmtNode returnStmtNode = new ReturnStmtNode();
         returnStmtNode.addNode(parseToken());
-        returnStmtNode.addNode(parseExpStmt());
+        if (!peek(0).getTokenType().equals(Token.TokenType.SEMICN)) {
+            returnStmtNode.addNode(parseExp());
+        }
+        if (peek(0).getTokenType() == Token.TokenType.SEMICN) {
+            returnStmtNode.addNode(parseToken());
+        } else {
+            Token prevToken = peek(-1);
+            if(prevToken != null) {
+                errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
+            }
+        }
         return returnStmtNode;
     }
 
