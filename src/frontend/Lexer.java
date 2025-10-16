@@ -171,6 +171,8 @@ public class Lexer {
                     token.type = Token.TokenType.AND; token.value = "&&";
                 } else
                 {
+                    token.type = Token.TokenType.AND; // “当作 && 进行处理”
+                    token.value = "&";
                     errorHandler.addError(token.lineNumber,CompileError.ErrorType.ILLEGAL_SYMBOL);
                 }
                     // 要记得错误处理
@@ -181,6 +183,8 @@ public class Lexer {
                     token.type = Token.TokenType.OR; token.value = "||";
                 } else
                 {
+                    token.type = Token.TokenType.OR;  // “当作 || 进行处理”
+                    token.value = "|";
                     errorHandler.addError(token.lineNumber, CompileError.ErrorType.ILLEGAL_SYMBOL);
                 }
                 break;
