@@ -352,9 +352,11 @@ public class Parser {
             case SEMICN -> stmtNode.addNode(parseExpStmt());
             default -> {
                 setRecordIndex();
+                errorHandler.stopAnalysis();
                 parseLval();
                 boolean isAssignment = !isAtEnd() && peek(0) != null && peek(0).getTokenType() == Token.TokenType.ASSIGN;
                 backToRecordIndex();
+                errorHandler.beginAnalysis();
                 if (isAssignment) {
                     AssignStmtNode assignNode = new AssignStmtNode();
                     assignNode.addNode(parseLval());
@@ -423,7 +425,15 @@ public class Parser {
         if (!peek(0).getTokenType().equals(Token.TokenType.RPARENT)) {
             forLoopNode.addNode(parseForStmt());
         }
-        forLoopNode.addNode(parseToken());
+        if (peek(0) != null && peek(0).getTokenType() == Token.TokenType.RPARENT) {
+            forLoopNode.addNode(parseToken());
+        } else {
+            // Error j:
+            Token prevToken = peek(-1);
+            if (prevToken != null) {
+                errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
+            }
+        }
         forLoopNode.addNode(parseStmt());
         return forLoopNode;
 
