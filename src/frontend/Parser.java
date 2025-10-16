@@ -484,24 +484,24 @@ public class Parser {
             printfStmtNode.addNode(parseToken());
             printfStmtNode.addNode(parseExp());
         }
-
         // 检查右小括号 ')'
         if (peek(0).getTokenType() == Token.TokenType.RPARENT) {
-            printfStmtNode.addNode(parseToken()); // 消耗 ')'
-
-            if (peek(0).getTokenType() == Token.TokenType.SEMICN) {
-                printfStmtNode.addNode(parseToken()); // 消耗 ';'
-            } else {
-                Token prevToken = peek(-1);
-                if (prevToken != null) {
-                    errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
-                }
-            }
+            printfStmtNode.addNode(parseToken());
         } else {
-            // 报告此错误后，直接返回，不再检查分号，以避免连锁错误。
-            Token prevToken = peek(-1); // 此时 prevToken 是 ')' 前的最后一个符号
-            if (prevToken != null) {
+            // 错误 j: 缺少右小括号
+            Token prevToken = peek(-1);
+            if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
+            }
+        }
+        // 检查分号 ';'
+        if (peek(0).getTokenType() == Token.TokenType.SEMICN) {
+            printfStmtNode.addNode(parseToken());
+        } else {
+            // 错误 i: 缺少分号
+            Token prevToken = peek(-1);
+            if(prevToken != null) {
+                errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
             }
         }
         return printfStmtNode;
