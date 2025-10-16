@@ -351,39 +351,28 @@ public class Parser {
             case LBRACE -> stmtNode.addNode(parseBlock());
             case SEMICN -> stmtNode.addNode(parseExpStmt());
             default -> {
-                boolean isAssignment = false;
-                for (int i = 0; i < tokens.size() - currentIndex; i++) {
-                    if (peek(i).getTokenType() == Token.TokenType.SEMICN) {
-                        break;
-                    }
-                    if (peek(i).getTokenType() == Token.TokenType.ASSIGN) {
-                        isAssignment = true;
-                        break;
-                    }
-                }
+                setRecordIndex();
+                parseLval();
+                boolean isAssignment = !isAtEnd() && peek(0) != null && peek(0).getTokenType() == Token.TokenType.ASSIGN;
+                backToRecordIndex();
+                if (isAssignment) {
+                    AssignStmtNode assignNode = new AssignStmtNode();
+                    assignNode.addNode(parseLval());
+                    assignNode.addNode(parseToken()); // 解析 '='
+                    assignNode.addNode(parseExp());
+                    stmtNode.addNode(assignNode);
 
-                if (isAssignment) { // 赋值语句
-                    AssignStmtNode assignStmtNode = new AssignStmtNode();
-                    assignStmtNode.addNode(parseLval());
-                    assignStmtNode.addNode(parseToken()); // =
-                    assignStmtNode.addNode(parseExp());
-                    stmtNode.addNode(assignStmtNode);
-                } else { // 表达式语句
-                    if (!peek(0).getTokenType().equals(Token.TokenType.SEMICN)) {
-                        stmtNode.addNode(parseExp());
+                    if (!isAtEnd() && peek(0) != null && peek(0).getTokenType() == Token.TokenType.SEMICN) {
+                        stmtNode.addNode(parseToken());
+                    } else {
+                        Token prevToken = peek(-1);
+                        if (prevToken != null) {
+                            errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
+                        }
                     }
-                }
-
-
-                if (peek(0).getTokenType().equals(Token.TokenType.SEMICN)) {
-                    stmtNode.addNode(parseToken());
                 } else {
-                    Token prevToken = peek(-1);
-                    if(prevToken != null) {
-                        errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
-                    }
+                    stmtNode.addNode(parseExpStmt());
                 }
-
             }
         }
         return stmtNode;
@@ -488,32 +477,31 @@ public class Parser {
 
     public PrintfStmtNode parsePrintfStmt() {
         PrintfStmtNode printfStmtNode = new PrintfStmtNode();
-        printfStmtNode.addNode(parseToken());
-        printfStmtNode.addNode(parseToken());
+        printfStmtNode.addNode(parseToken()); // printf
+        printfStmtNode.addNode(parseToken()); // (
         printfStmtNode.addNode(parseStringConst());
         while (peek(0).getTokenType().equals(Token.TokenType.COMMA)) {
             printfStmtNode.addNode(parseToken());
             printfStmtNode.addNode(parseExp());
         }
-// 检查右小括号 ')'
-        if (peek(0).getTokenType() == Token.TokenType.RPARENT) {
-            printfStmtNode.addNode(parseToken());
-        } else {
-            // 错误 j: 缺少右小括号
-            Token prevToken = peek(-1);
-            if(prevToken != null) {
-                errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
-            }
-        }
-        // 检查分号 ';'
-        if (peek(0).getTokenType() == Token.TokenType.SEMICN) {
-            printfStmtNode.addNode(parseToken());
-        } else {
-            // 错误 i: 缺少分号
 
-            Token prevToken = peek(-1);
-            if(prevToken != null) {
-                errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
+        // 检查右小括号 ')'
+        if (peek(0).getTokenType() == Token.TokenType.RPARENT) {
+            printfStmtNode.addNode(parseToken()); // 消耗 ')'
+
+            if (peek(0).getTokenType() == Token.TokenType.SEMICN) {
+                printfStmtNode.addNode(parseToken()); // 消耗 ';'
+            } else {
+                Token prevToken = peek(-1);
+                if (prevToken != null) {
+                    errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
+                }
+            }
+        } else {
+            // 报告此错误后，直接返回，不再检查分号，以避免连锁错误。
+            Token prevToken = peek(-1); // 此时 prevToken 是 ')' 前的最后一个符号
+            if (prevToken != null) {
+                errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
             }
         }
         return printfStmtNode;
