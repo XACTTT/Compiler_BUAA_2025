@@ -510,6 +510,7 @@ public class Parser {
             printfStmtNode.addNode(parseToken());
         } else {
             // 错误 i: 缺少分号
+
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
