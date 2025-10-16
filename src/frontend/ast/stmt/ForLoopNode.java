@@ -6,5 +6,6 @@ import frontend.ast.SyntaxType;
 public class ForLoopNode extends ASTnode {
     public ForLoopNode() {
         super(SyntaxType.STMT);
+        this.printSign=false;
     }
 }

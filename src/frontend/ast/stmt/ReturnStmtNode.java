@@ -9,6 +9,7 @@ Return 语句 'return' [Exp] ';'
 public class ReturnStmtNode extends STMTnode {
     public ReturnStmtNode() {
         super(SyntaxType.STMT);
+        this.printSign=false;
     }
 
 }

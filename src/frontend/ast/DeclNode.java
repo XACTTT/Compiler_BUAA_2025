@@ -1,7 +1,7 @@
 package frontend.ast;
 
-public  class DECLnode extends ASTnode{
-    public DECLnode(SyntaxType type) {
+public  class DeclNode extends ASTnode{
+    public DeclNode(SyntaxType type) {
         super(type);
         this.printSign = false;
     }

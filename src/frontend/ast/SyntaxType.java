@@ -1,6 +1,7 @@
 package frontend.ast;
 
 public enum SyntaxType {
+
     COMP_UNIT("CompUnit"),
 
 
@@ -47,7 +48,6 @@ public enum SyntaxType {
 
     NUMBER("Number"),
 
-    INT_CONST("IntConst"),
     STRING_CONST("StringConst"),
 
     TOKEN("Token");
@@ -57,5 +57,8 @@ public enum SyntaxType {
         this.typeName = typeName;
     }
 
+    public String getTypeName() {
+        return typeName;
+    }
 
 }

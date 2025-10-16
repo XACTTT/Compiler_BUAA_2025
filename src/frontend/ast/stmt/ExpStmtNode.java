@@ -8,5 +8,6 @@ import frontend.ast.SyntaxType;
 public class ExpStmtNode extends STMTnode {
 public ExpStmtNode() {
     super(SyntaxType.STMT);
+    this.printSign=false;
 }
 }

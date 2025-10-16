@@ -1,8 +1,7 @@
-const int array[2] = {1,2};
-
 int main(){
     int c;
-    c = getint();
-    printf("output is %d",c);
+    c= getint();
+    printf("%d",c);
+    if(a == b)
     return c;
-}//34
+}

@@ -91,8 +91,8 @@ public class Parser {
     }
     return funcDefNode;
     }
-    public DECLnode parseDecl() {
-    DECLnode declNode = new DECLnode(SyntaxType.DECL);
+    public DeclNode parseDecl() {
+    DeclNode declNode = new DeclNode(SyntaxType.DECL);
     if(peek(0).getTokenType().equals(Token.TokenType.CONSTTK)){
         declNode.addNode(parseConstDecl());
     }else {
@@ -172,10 +172,11 @@ public class Parser {
     public VarDefNode parseVarDef() {
         VarDefNode varDefNode = new VarDefNode();
         varDefNode.addNode(parseIdent());
-
+        if(peek(0).getTokenType().equals(Token.TokenType.LBRACK)){
             varDefNode.addNode(parseToken());
             varDefNode.addNode(parseConstExp());
             varDefNode.addNode(parseToken());
+        }
         if(peek(0).getTokenType().equals(Token.TokenType.ASSIGN)){
             varDefNode.addNode(parseToken());
             varDefNode.addNode(parseInitVal());
@@ -418,72 +419,108 @@ public class Parser {
 
 
     public LOrExpNode parseLOrExp() {
+        LAndExpNode lAndExpNode = parseLAndExp();
         LOrExpNode lOrExpNode = new LOrExpNode();
-        lOrExpNode.addNode(parseLAndExp());
+        lOrExpNode.addNode(lAndExpNode);
+
         while (peek(0).getTokenType().equals(Token.TokenType.OR)) {
-            lOrExpNode.addNode(parseToken());
-            lOrExpNode.addNode(parseLAndExp());
+            LOrExpNode newRoot = new LOrExpNode();
+            newRoot.addNode(lOrExpNode);
+            newRoot.addNode(parseToken());
+            newRoot.addNode(parseLAndExp());
+            lOrExpNode = newRoot;
         }
         return lOrExpNode;
     }
 
+
     public LAndExpNode parseLAndExp() {
+        EqExpNode eqExpNode = parseEqExp();
+
         LAndExpNode lAndExpNode = new LAndExpNode();
-        lAndExpNode.addNode(parseEqExp());
+        lAndExpNode.addNode(eqExpNode);
+
         while (peek(0).getTokenType().equals(Token.TokenType.AND)) {
-            lAndExpNode.addNode(parseToken());
-            lAndExpNode.addNode(parseEqExp());
+            LAndExpNode newRoot = new LAndExpNode();
+            newRoot.addNode(lAndExpNode);
+            newRoot.addNode(parseToken());
+            newRoot.addNode(parseEqExp());
+            lAndExpNode = newRoot;
         }
         return lAndExpNode;
     }
 
 
     public EqExpNode parseEqExp() {
+        RelExpNode relExpNode = parseRelExp();
+
         EqExpNode eqExpNode = new EqExpNode();
-        eqExpNode.addNode(parseRelExp());
+        eqExpNode.addNode(relExpNode);
+
         while (peek(0).getTokenType().equals(Token.TokenType.EQL) ||
                 peek(0).getTokenType().equals(Token.TokenType.NEQ)) {
-            eqExpNode.addNode(parseToken());
-            eqExpNode.addNode(parseRelExp());
+            EqExpNode newRoot = new EqExpNode();
+            newRoot.addNode(eqExpNode);
+            newRoot.addNode(parseToken());
+            newRoot.addNode(parseRelExp());
+            eqExpNode = newRoot;
         }
         return eqExpNode;
     }
 
 
     public RelExpNode parseRelExp() {
+        AddExpNode addExpNode = parseAddExp();
+
         RelExpNode relExpNode = new RelExpNode();
-        relExpNode.addNode(parseAddExp());
+        relExpNode.addNode(addExpNode);
+
         while (peek(0).getTokenType().equals(Token.TokenType.LSS) ||
                 peek(0).getTokenType().equals(Token.TokenType.GRE) ||
                 peek(0).getTokenType().equals(Token.TokenType.LEQ) ||
                 peek(0).getTokenType().equals(Token.TokenType.GEQ)) {
-            relExpNode.addNode(parseToken());
-            relExpNode.addNode(parseAddExp());
+            RelExpNode newRoot = new RelExpNode();
+            newRoot.addNode(relExpNode);
+            newRoot.addNode(parseToken());
+            newRoot.addNode(parseAddExp());
+            relExpNode = newRoot;
         }
         return relExpNode;
     }
 
 
     public AddExpNode parseAddExp() {
+        MulExpNode mulExpNode = parseMulExp();
+
         AddExpNode addExpNode = new AddExpNode();
-        addExpNode.addNode(parseMulExp());
+        addExpNode.addNode(mulExpNode);
+
         while (peek(0).getTokenType().equals(Token.TokenType.PLUS) ||
                 peek(0).getTokenType().equals(Token.TokenType.MINU)) {
-            addExpNode.addNode(parseToken());
-            addExpNode.addNode(parseMulExp());
+            AddExpNode newRoot = new AddExpNode();
+            newRoot.addNode(addExpNode);
+            newRoot.addNode(parseToken());
+            newRoot.addNode(parseMulExp());
+            addExpNode = newRoot;
         }
         return addExpNode;
     }
 
 
     public MulExpNode parseMulExp() {
+        UnaryExpNode unaryExpNode = parseUnaryExp();
+
         MulExpNode mulExpNode = new MulExpNode();
-        mulExpNode.addNode(parseUnaryExp());
+        mulExpNode.addNode(unaryExpNode);
+
         while (peek(0).getTokenType().equals(Token.TokenType.MULT) ||
                 peek(0).getTokenType().equals(Token.TokenType.DIV) ||
                 peek(0).getTokenType().equals(Token.TokenType.MOD)) {
-            mulExpNode.addNode(parseToken());
-            mulExpNode.addNode(parseUnaryExp());
+            MulExpNode newRoot = new MulExpNode();
+            newRoot.addNode(mulExpNode);
+            newRoot.addNode(parseToken());
+            newRoot.addNode(parseUnaryExp());
+            mulExpNode = newRoot;
         }
         return mulExpNode;
     }

@@ -13,6 +13,7 @@ public class BTypeNode extends TerminalNode {
 
     public BTypeNode(Token token) {
         super(SyntaxType.BTYPE);
+        this.token = token;
         this.printSign = false;
     }
 }

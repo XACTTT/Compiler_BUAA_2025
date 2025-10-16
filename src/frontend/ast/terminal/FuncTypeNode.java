@@ -15,5 +15,6 @@ public class FuncTypeNode extends TerminalNode {
     public FuncTypeNode(Token token) {
         super(SyntaxType.FUNC_TYPE);
         this.token = token;
+        this.printSign = true;
     }
 }

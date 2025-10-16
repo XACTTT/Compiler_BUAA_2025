@@ -9,5 +9,6 @@ import frontend.ast.SyntaxType;
 public class AssignStmtNode extends STMTnode {
 public AssignStmtNode() {
     super(SyntaxType.STMT);
+    this.printSign=false;
 }
 }

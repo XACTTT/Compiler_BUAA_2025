@@ -28,7 +28,7 @@ public abstract class ASTnode {
         }
 
         if (printSign) {
-            stringBuilder.append("<" + this.syntaxType + ">");
+            stringBuilder.append("<" + this.syntaxType.getTypeName() + ">");
         } else {
             if (!stringBuilder.isEmpty() &&
                     stringBuilder.charAt(stringBuilder.length() - 1) == '\n') {

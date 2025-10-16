@@ -15,6 +15,7 @@ public class Compiler {
  public static void main(String[] args) {
   String inputFile = "testfile.txt";
   String outputFileLexer = "lexer.txt";
+  String outputFileParser = "parser.txt";
   String outputFileError = "error.txt";
 
   try {
@@ -32,6 +33,9 @@ public class Compiler {
      for (Token token : tokens) {
       writer.write(token.toString() + "\n");
      }
+    }
+    try (FileWriter writer = new FileWriter(outputFileParser)) {
+     writer.write(compUnitNode.toString() + "\n");
     }
    }
 

@@ -7,6 +7,6 @@ import frontend.ast.SyntaxType;
 */
 public class NumberNode extends EXPnode {
     public NumberNode() {
-        super(SyntaxType.INT_CONST);
+        super(SyntaxType.NUMBER);
     }
 }
