@@ -97,7 +97,7 @@ public class Parser {
         funcDefNode.addNode(parseFuncType());
         funcDefNode.addNode(parseIdent());
         funcDefNode.addNode(parseToken());
-        if (!getCurrentToken().getTokenType().equals(Token.TokenType.RPARENT)) {
+        if (peek(0).getTokenType() == Token.TokenType.INTTK) {
             funcDefNode.addNode(parseFuncFParams());
         }
         if (getCurrentToken().getTokenType().equals(Token.TokenType.RPARENT)) {
