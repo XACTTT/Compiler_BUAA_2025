@@ -18,6 +18,10 @@ public class TerminalNode extends ASTnode {
 
     @Override
     public String toString() {
-        return token.toString();
+        // 直接返回Token的字符串表示，不附加任何换行符
+        if (token != null) {
+            return token.toString();
+        }
+        return "";
     }
 }

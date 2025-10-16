@@ -20,22 +20,33 @@ public abstract class ASTnode {
         children.add(node);
     }
 
+    @Override
     public String toString() {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (ASTnode astNode : this.children) {
-            stringBuilder.append(astNode);
-            stringBuilder.append("\n");
-        }
-
-        if (printSign) {
-            stringBuilder.append("<" + this.syntaxType.getTypeName() + ">");
-        } else {
-            if (!stringBuilder.isEmpty() &&
-                    stringBuilder.charAt(stringBuilder.length() - 1) == '\n') {
-                stringBuilder.setLength(stringBuilder.length() - 1);
+        ArrayList<String> childStrings = new ArrayList<>();
+        for (ASTnode child : children) {
+            if (child != null) {
+                String childString = child.toString();
+                if (childString != null && !childString.isEmpty()) {
+                    childStrings.add(childString);
+                }
             }
         }
 
-        return stringBuilder.toString();
+        StringBuilder sb = new StringBuilder();
+
+        for (int i = 0; i < childStrings.size(); i++) {
+            sb.append(childStrings.get(i));
+            if (i < childStrings.size() - 1) {
+                sb.append("\n");
+            }
+        }
+        if (printSign) {
+            if (!childStrings.isEmpty()) {
+                sb.append("\n");
+            }
+            sb.append("<").append(this.syntaxType.getTypeName()).append(">");
+        }
+
+        return sb.toString();
     }
 }
