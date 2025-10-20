@@ -31,13 +31,17 @@ public class Lexer {
         this.source = source;
     }
 
-    public ArrayList<Token> getTokens() {
+    public ArrayList<Token> generateTokens() {
         while (!isEnd()) {
             Token token = getNextToken();
             if (token != null && !token.isNull()) {
                 tokens.add(token);
             }
         }
+        return tokens;
+    }
+
+    public ArrayList<Token> getTokens() {
         return tokens;
     }
 

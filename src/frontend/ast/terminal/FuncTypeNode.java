@@ -10,12 +10,7 @@ FuncType -> 'void' | 'int'
 */
 public class FuncTypeNode extends ASTnode {
 
-
-
-
     public FuncTypeNode() {
         super(SyntaxType.FUNC_TYPE);
-
-
     }
 }
