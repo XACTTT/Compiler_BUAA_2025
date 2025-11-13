@@ -2,3 +2,8 @@
 *.txt
 !testfile.txt
 !testfile_good.txt
+!test_factorial.txt
+!test_add.txt
+*.o
+*.ll
+test_program
