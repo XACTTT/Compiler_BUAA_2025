@@ -1,5 +1,8 @@
 package frontend.ast;
 
+import midend.SemanticAnalyzer;
+import midend.symbol.SymbolType;
+
 import java.util.ArrayList;
 
 public abstract class ASTnode {
@@ -48,5 +51,10 @@ public abstract class ASTnode {
         }
 
         return sb.toString();
+    }
+
+    public SymbolType accept(SemanticAnalyzer visitor) {
+            visitor.visit(this);
+            return null;
     }
 }

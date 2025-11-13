@@ -1,6 +1,5 @@
 package frontend.ast.terminal;
 
-import frontend.Token;
 import frontend.ast.ASTnode;
 import frontend.ast.SyntaxType;
 
@@ -12,5 +11,9 @@ public class FuncTypeNode extends ASTnode {
 
     public FuncTypeNode() {
         super(SyntaxType.FUNC_TYPE);
+    }
+
+    public String getTokenValue() {
+        return ((TokenNode)children.get(0)).getToken().getValue();
     }
 }

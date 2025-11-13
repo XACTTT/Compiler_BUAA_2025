@@ -11,4 +11,8 @@ public class TokenNode extends TerminalNode {
         super(SyntaxType.TOKEN);
         this.token = token;
     }
+
+    public Token getToken(){
+        return token;
+    }
 }

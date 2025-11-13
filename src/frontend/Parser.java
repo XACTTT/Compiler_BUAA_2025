@@ -81,6 +81,7 @@ public class Parser {
             mainFuncDefNode.addNode(parseToken()); // )
         } else {
             // 错误 j
+            mainFuncDefNode.addNode(new TokenNode(new Token(Token.TokenType.RPARENT,")")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
@@ -104,6 +105,7 @@ public class Parser {
             funcDefNode.addNode(parseToken()); // )
         } else {
             // 错误 j
+            funcDefNode.addNode(new TokenNode(new Token(Token.TokenType.RPARENT,")")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
@@ -135,6 +137,7 @@ public class Parser {
         if (peek(0).getTokenType().equals(Token.TokenType.SEMICN)) {
             constDeclNode.addNode(parseToken());
         } else {
+            constDeclNode.addNode(new TokenNode(new Token(Token.TokenType.SEMICN,";")));
             Token prevToken = peek(-1);
             if (prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
@@ -154,6 +157,7 @@ public class Parser {
                 constDefNode.addNode(parseToken()); // ]
             } else {
                 // 错误 k
+                constDefNode.addNode(new TokenNode(new Token(Token.TokenType.RBRACK,"]")));
                 Token prevToken = peek(-1);
                 if(prevToken != null) {
                     errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_BRACKET);
@@ -208,6 +212,7 @@ public class Parser {
             varDeclNode.addNode(parseToken());
         } else {
             // 错误 i: 缺少分号
+            varDeclNode.addNode(new TokenNode(new Token(Token.TokenType.SEMICN,";")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
@@ -226,6 +231,7 @@ public class Parser {
                 varDefNode.addNode(parseToken()); // ]
             } else {
                 // 错误 k
+                varDefNode.addNode(new TokenNode(new Token(Token.TokenType.RBRACK,"]")));
                 Token prevToken = peek(-1);
                 if(prevToken != null) {
                     errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_BRACKET);
@@ -301,6 +307,7 @@ public class Parser {
                 funcFParamNode.addNode(parseToken()); // ]
             } else {
                 // 错误 k
+                funcFParamNode.addNode(new TokenNode(new Token(Token.TokenType.RBRACK,"]")));
                 Token prevToken = peek(-1);
                 if(prevToken != null) {
                     errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_BRACKET);
@@ -365,8 +372,9 @@ public class Parser {
                     stmtNode.addNode(assignNode);
 
                     if (!isAtEnd() && peek(0) != null && peek(0).getTokenType() == Token.TokenType.SEMICN) {
-                        stmtNode.addNode(parseToken());
+                        assignNode.addNode(parseToken());
                     } else {
+                        assignNode.addNode(new TokenNode(new Token(Token.TokenType.SEMICN,";")));
                         Token prevToken = peek(-1);
                         if (prevToken != null) {
                             errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
@@ -390,6 +398,7 @@ public class Parser {
             ifStmtNode.addNode(parseToken()); // )
         } else {
             // 错误 j
+            ifStmtNode.addNode(new TokenNode(new Token(Token.TokenType.RPARENT,")")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
@@ -429,6 +438,7 @@ public class Parser {
             forLoopNode.addNode(parseToken());
         } else {
             // Error j:
+            forLoopNode.addNode(new TokenNode(new Token(Token.TokenType.RPARENT,")")));
             Token prevToken = peek(-1);
             if (prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
@@ -446,6 +456,7 @@ public class Parser {
         if (peek(0).getTokenType() == Token.TokenType.SEMICN) {
             breakStmtNode.addNode(parseToken());
         } else {
+            breakStmtNode.addNode(new TokenNode(new Token(Token.TokenType.SEMICN,";")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
@@ -460,6 +471,7 @@ public class Parser {
         if (peek(0).getTokenType() == Token.TokenType.SEMICN) {
             continueStmtNode.addNode(parseToken());
         } else {
+            continueStmtNode.addNode(new TokenNode(new Token(Token.TokenType.SEMICN,";")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
@@ -477,6 +489,7 @@ public class Parser {
         if (peek(0).getTokenType() == Token.TokenType.SEMICN) {
             returnStmtNode.addNode(parseToken());
         } else {
+            returnStmtNode.addNode(new TokenNode(new Token(Token.TokenType.SEMICN,";")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
@@ -499,6 +512,7 @@ public class Parser {
             printfStmtNode.addNode(parseToken());
         } else {
             // 错误 j: 缺少右小括号
+            printfStmtNode.addNode(new TokenNode(new Token(Token.TokenType.RPARENT,")")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
@@ -509,6 +523,7 @@ public class Parser {
             printfStmtNode.addNode(parseToken());
         } else {
             // 错误 i: 缺少分号
+            printfStmtNode.addNode(new TokenNode(new Token(Token.TokenType.SEMICN,";")));
             Token prevToken = peek(-1);
             if(prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
@@ -530,6 +545,7 @@ public class Parser {
             expStmtNode.addNode(parseToken()); // 消耗分号
         } else {
             // 错误 i: 缺少分号
+            expStmtNode.addNode(new TokenNode(new Token(Token.TokenType.SEMICN,";")));
             Token prevToken = peek(-1);
             if (prevToken != null) {
                 errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_SEMICOLON);
@@ -562,6 +578,7 @@ public class Parser {
                 lvalNode.addNode(parseToken()); // ]
             } else {
                 // 错误 k
+                lvalNode.addNode(new TokenNode(new Token(Token.TokenType.RBRACK,"]")));
                 Token prevToken = peek(-1);
                 if(prevToken != null) {
                     errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_BRACKET);
@@ -704,6 +721,7 @@ public class Parser {
                 unaryExpNode.addNode(parseToken()); // ')'
             } else {
                 // 错误 j
+                unaryExpNode.addNode(new TokenNode(new Token(Token.TokenType.RPARENT,")")));
                 Token prevToken = peek(-1);
                 if(prevToken != null) {
                     errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);
@@ -733,6 +751,7 @@ public class Parser {
                 primaryExpNode.addNode(parseToken()); // ')'
             } else {
                 // 错误 j
+                primaryExpNode.addNode(new TokenNode(new Token(Token.TokenType.RPARENT,")")));
                 Token prevToken = peek(-1);
                 if(prevToken != null) {
                     errorHandler.addError(prevToken.lineNumber, CompileError.ErrorType.MISSING_RIGHT_PARENTHESIS);

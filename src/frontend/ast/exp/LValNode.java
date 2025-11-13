@@ -5,13 +5,13 @@ import midend.SemanticAnalyzer;
 import midend.symbol.SymbolType;
 
 /*
-数值 Number -> IntConst
+左值表达式 Ident ['[' Exp ']']
 */
-public class NumberNode extends EXPnode {
-    public NumberNode() {
-        super(SyntaxType.NUMBER);
+public class LValNode extends EXPnode {
+    public LValNode() {
+        super(SyntaxType.LVAL_EXP);
     }
     public SymbolType accept(SemanticAnalyzer visitor) {
-        return visitor.visit(this);
+     return    visitor.visit(this);
     }
 }

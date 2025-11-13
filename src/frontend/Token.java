@@ -10,13 +10,18 @@ public class Token {
         this.value = null;
         this.lineNumber = -1;
     }
+    public Token(TokenType type,String value) {
+        this.type = type;
+        this.value = value;
+        this.lineNumber = -1;
+    }
     public TokenType getTokenType() {
         return type;
     }
     public String getValue() {
         return value;
     }
-    enum TokenType{
+    public enum TokenType{
         //标识符
         IDENFR,
 

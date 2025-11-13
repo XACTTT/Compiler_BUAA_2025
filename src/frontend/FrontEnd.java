@@ -2,6 +2,7 @@ package frontend;
 
 import error.MyErrorHandler;
 import frontend.ast.CompUnitNode;
+import midend.SemanticAnalyzer;
 
 import java.util.ArrayList;
 
@@ -26,6 +27,8 @@ public class FrontEnd {
         parser = new Parser(lexer.getTokens());
         root = parser.parseCompUnit();
     }
+
+
 
     public CompUnitNode getAstTree(){
         return root;

@@ -1,16 +1,15 @@
 package frontend.ast.exp;
 
+import frontend.ast.ASTnode;
 import frontend.ast.SyntaxType;
 import midend.SemanticAnalyzer;
 import midend.symbol.SymbolType;
 
-/*
-数值 Number -> IntConst
-*/
-public class NumberNode extends EXPnode {
-    public NumberNode() {
-        super(SyntaxType.NUMBER);
+public class CondNode extends ASTnode {
+    public CondNode() {
+        super(SyntaxType.COND_EXP);
     }
+
     public SymbolType accept(SemanticAnalyzer visitor) {
         return visitor.visit(this);
     }

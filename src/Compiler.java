@@ -8,20 +8,27 @@ import frontend.Token;
 import error.MyErrorHandler;
 import frontend.ast.CompUnitNode;
 import frontend.FrontEnd;
+import frontend.ast.terminal.FuncTypeNode;
+import frontend.ast.terminal.TokenNode;
+import midend.MidEnd;
+
 public class Compiler {
  public static void main(String[] args) {
   String inputFile = "testfile.txt";
   String outputFileError = "error.txt";
   String outputFileLexer = "lexer.txt";
   String outputFileParser = "parser.txt";
+  String outputFileSymbol = "symbol.txt";
 
   MyErrorHandler errorHandler = MyErrorHandler.getInstance();
-
   try {
    String source = new String(Files.readAllBytes(Paths.get(inputFile)));
    FrontEnd frontend = new FrontEnd(source, errorHandler);
    frontend.GenerateTokenList();
    frontend.GenerateAstTree();
+   MidEnd midEnd;
+      midEnd = new MidEnd(frontend.getAstTree());
+      midEnd.GenerateSymbolTable();
    if (errorHandler.hasErrors()) {
     errorHandler.printErrors(outputFileError);
     return;
@@ -39,6 +46,10 @@ public class Compiler {
      writer.write(astRoot + "\n");
     }
    }
+   try (FileWriter writer = new FileWriter(outputFileSymbol)) {
+     writer.write(midEnd.GetSymbolTable().toString());
+   }
+
   } catch (IOException e) {
    System.err.println("错误：无法读取输入文件: " + e.getMessage());
   } catch (Exception e) {
