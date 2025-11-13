@@ -1,0 +1,16 @@
+int factorial(int n) {
+    if (n <= 1) {
+        return 1;
+    } else {
+        return n * factorial(n - 1);
+    }
+}
+
+int main() {
+    int n;
+    n = getint();
+    int result;
+    result = factorial(n);
+    printf("factorial = %d\n", result);
+    return 0;
+}
