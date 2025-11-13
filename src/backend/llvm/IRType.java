@@ -5,6 +5,7 @@ public class IRType {
     
     // Common types
     public static final IRType I32 = new IRType("i32");
+    public static final IRType I1 = new IRType("i1");
     public static final IRType VOID = new IRType("void");
     public static final IRType I8 = new IRType("i8");
     

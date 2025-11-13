@@ -699,7 +699,7 @@ public class LLVMIRGenerator {
             // Single EqExp
             IRValue value = visitEqExp((EqExpNode) node.children.get(0));
             String cmpReg = newRegister();
-            IRValue cmpResult = new IRValue(IRType.I32, cmpReg);
+            IRValue cmpResult = new IRValue(IRType.I1, cmpReg);
             currentBlock.addInstruction(new IcmpInst(cmpResult, IcmpInst.Condition.NE, 
                                                       value, new IRValue(0)));
             currentBlock.addInstruction(new BranchInst(cmpResult, trueLabel, falseLabel));
@@ -713,7 +713,7 @@ public class LLVMIRGenerator {
                 boolean isLast = (i >= node.children.size() - 2);
                 IRValue value = visitEqExp((EqExpNode) node.children.get(i));
                 String cmpReg = newRegister();
-                IRValue cmpResult = new IRValue(IRType.I32, cmpReg);
+                IRValue cmpResult = new IRValue(IRType.I1, cmpReg);
                 currentBlock.addInstruction(new IcmpInst(cmpResult, IcmpInst.Condition.NE, 
                                                           value, new IRValue(0)));
                 
@@ -871,7 +871,7 @@ public class LLVMIRGenerator {
                 return result;
             } else if (opType == Token.TokenType.NOT) {
                 String cmpReg = newRegister();
-                IRValue cmpResult = new IRValue(IRType.I32, cmpReg);
+                IRValue cmpResult = new IRValue(IRType.I1, cmpReg);
                 currentBlock.addInstruction(new IcmpInst(cmpResult, IcmpInst.Condition.EQ, 
                                                           value, new IRValue(0)));
                 return cmpResult;
@@ -986,7 +986,7 @@ public class LLVMIRGenerator {
                     left = operand;
                 } else {
                     String resultReg = newRegister();
-                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    IRValue result = new IRValue(IRType.I1, resultReg);
                     
                     if (lastOp.token.getTokenType() == Token.TokenType.EQL) {
                         currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.EQ, left, operand));
@@ -1001,7 +1001,7 @@ public class LLVMIRGenerator {
                     left = operand;
                 } else {
                     String resultReg = newRegister();
-                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    IRValue result = new IRValue(IRType.I1, resultReg);
                     
                     if (lastOp.token.getTokenType() == Token.TokenType.EQL) {
                         currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.EQ, left, operand));
@@ -1040,7 +1040,7 @@ public class LLVMIRGenerator {
                     left = operand;
                 } else {
                     String resultReg = newRegister();
-                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    IRValue result = new IRValue(IRType.I1, resultReg);
                     
                     Token.TokenType opType = lastOp.token.getTokenType();
                     if (opType == Token.TokenType.LSS) {
@@ -1060,7 +1060,7 @@ public class LLVMIRGenerator {
                     left = operand;
                 } else {
                     String resultReg = newRegister();
-                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    IRValue result = new IRValue(IRType.I1, resultReg);
                     
                     Token.TokenType opType = lastOp.token.getTokenType();
                     if (opType == Token.TokenType.LSS) {
