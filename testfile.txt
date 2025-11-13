@@ -1,14 +1,7 @@
-void f0(int a {
-
-}
-
-void f1(int x, int y, int z) {
-    f0(2024);
-}
-
-int main() {
-    f1(1)
-    int a[2;
-
+int test;
+int main(){
+    printf("Hello World\n");
+    test = getint();
+    printf("%d",test);
     return 0;
 }

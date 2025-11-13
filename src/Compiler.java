@@ -11,6 +11,7 @@ import frontend.FrontEnd;
 import frontend.ast.terminal.FuncTypeNode;
 import frontend.ast.terminal.TokenNode;
 import midend.MidEnd;
+import backend.LLVMIRGenerator;
 
 public class Compiler {
  public static void main(String[] args) {
@@ -48,6 +49,16 @@ public class Compiler {
    }
    try (FileWriter writer = new FileWriter(outputFileSymbol)) {
      writer.write(midEnd.GetSymbolTable().toString());
+   }
+   
+   // Generate LLVM IR
+   if (!errorHandler.hasErrors()) {
+    LLVMIRGenerator irGenerator = new LLVMIRGenerator(frontend.getAstTree(), midEnd.GetSymbolTable());
+    String llvmIR = irGenerator.generate();
+    
+    try (FileWriter writer = new FileWriter("llvm_ir.txt")) {
+     writer.write(llvmIR);
+    }
    }
 
   } catch (IOException e) {
