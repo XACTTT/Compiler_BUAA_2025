@@ -1,14 +1,7 @@
-int add(int a, int b) {
-    return a + b;
-}
-
-int main() {
-    int x;
-    int y;
-    x = getint();
-    y = getint();
-    int sum;
-    sum = add(x, y);
-    printf("sum = %d\n", sum);
+int test;
+int main(){
+    printf("Hello World\n");
+    test = getint();
+    printf("%d",test);
     return 0;
 }
