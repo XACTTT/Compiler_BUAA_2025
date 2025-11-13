@@ -174,14 +174,29 @@ public class LLVMIRGenerator {
     }
     
     private void visitFuncParams(FuncFParamsNode node) {
+        // First pass: count parameters and reserve registers
+        int paramCount = 0;
+        for (ASTnode child : node.children) {
+            if (child instanceof FuncFParamNode) {
+                paramCount++;
+            }
+        }
+        
+        // Reserve registers for parameters
+        for (int i = 0; i < paramCount; i++) {
+            newRegister();
+        }
+        
+        // Second pass: process parameters
+        int paramIndex = 1;
         for (ASTnode child : node.children) {
             if (child instanceof FuncFParamNode) {
                 FuncFParamNode paramNode = (FuncFParamNode) child;
                 IdentNode identNode = (IdentNode) paramNode.children.get(1);
                 String paramName = identNode.token.getValue();
                 
-                // Create parameter value
-                String paramReg = newRegister();
+                // Use pre-allocated parameter register
+                String paramReg = "%" + paramIndex;
                 IRValue paramValue = new IRValue(IRType.I32, paramReg);
                 currentFunction.addParam(paramValue);
                 
@@ -192,6 +207,7 @@ public class LLVMIRGenerator {
                 currentBlock.addInstruction(new StoreInst(paramValue, allocaPtr));
                 
                 varMap.put(paramName, allocaPtr);
+                paramIndex++;
             }
         }
     }
@@ -716,50 +732,115 @@ public class LLVMIRGenerator {
     
     private IRValue visitAddExp(AddExpNode node) {
         if (node.children.size() == 1) {
-            return visitMulExp((MulExpNode) node.children.get(0));
+            ASTnode child = node.children.get(0);
+            if (child instanceof MulExpNode) {
+                return visitMulExp((MulExpNode) child);
+            } else if (child instanceof AddExpNode) {
+                return visitAddExp((AddExpNode) child);
+            }
         }
         
-        IRValue left = visitMulExp((MulExpNode) node.children.get(0));
-        for (int i = 1; i < node.children.size(); i += 2) {
-            TokenNode op = (TokenNode) node.children.get(i);
-            IRValue right = visitMulExp((MulExpNode) node.children.get(i + 1));
+        IRValue left = null;
+        TokenNode lastOp = null;
+        
+        for (int i = 0; i < node.children.size(); i++) {
+            ASTnode child = node.children.get(i);
             
-            String resultReg = newRegister();
-            IRValue result = new IRValue(IRType.I32, resultReg);
-            
-            if (op.token.getTokenType() == Token.TokenType.PLUS) {
-                currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.ADD, left, right));
-            } else {
-                currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SUB, left, right));
+            if (child instanceof MulExpNode) {
+                IRValue operand = visitMulExp((MulExpNode) child);
+                if (left == null) {
+                    left = operand;
+                } else {
+                    String resultReg = newRegister();
+                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    
+                    if (lastOp.token.getTokenType() == Token.TokenType.PLUS) {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.ADD, left, operand));
+                    } else {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SUB, left, operand));
+                    }
+                    left = result;
+                }
+            } else if (child instanceof AddExpNode) {
+                IRValue operand = visitAddExp((AddExpNode) child);
+                if (left == null) {
+                    left = operand;
+                } else {
+                    String resultReg = newRegister();
+                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    
+                    if (lastOp.token.getTokenType() == Token.TokenType.PLUS) {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.ADD, left, operand));
+                    } else {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SUB, left, operand));
+                    }
+                    left = result;
+                }
+            } else if (child instanceof TokenNode) {
+                lastOp = (TokenNode) child;
             }
-            left = result;
         }
+        
         return left;
     }
     
     private IRValue visitMulExp(MulExpNode node) {
         if (node.children.size() == 1) {
-            return visitUnaryExp((UnaryExpNode) node.children.get(0));
+            ASTnode child = node.children.get(0);
+            if (child instanceof UnaryExpNode) {
+                return visitUnaryExp((UnaryExpNode) child);
+            } else if (child instanceof MulExpNode) {
+                return visitMulExp((MulExpNode) child);
+            }
         }
         
-        IRValue left = visitUnaryExp((UnaryExpNode) node.children.get(0));
-        for (int i = 1; i < node.children.size(); i += 2) {
-            TokenNode op = (TokenNode) node.children.get(i);
-            IRValue right = visitUnaryExp((UnaryExpNode) node.children.get(i + 1));
+        IRValue left = null;
+        TokenNode lastOp = null;
+        
+        for (int i = 0; i < node.children.size(); i++) {
+            ASTnode child = node.children.get(i);
             
-            String resultReg = newRegister();
-            IRValue result = new IRValue(IRType.I32, resultReg);
-            
-            Token.TokenType opType = op.token.getTokenType();
-            if (opType == Token.TokenType.MULT) {
-                currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.MUL, left, right));
-            } else if (opType == Token.TokenType.DIV) {
-                currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SDIV, left, right));
-            } else if (opType == Token.TokenType.MOD) {
-                currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SREM, left, right));
+            if (child instanceof UnaryExpNode) {
+                IRValue operand = visitUnaryExp((UnaryExpNode) child);
+                if (left == null) {
+                    left = operand;
+                } else {
+                    String resultReg = newRegister();
+                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    
+                    Token.TokenType opType = lastOp.token.getTokenType();
+                    if (opType == Token.TokenType.MULT) {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.MUL, left, operand));
+                    } else if (opType == Token.TokenType.DIV) {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SDIV, left, operand));
+                    } else if (opType == Token.TokenType.MOD) {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SREM, left, operand));
+                    }
+                    left = result;
+                }
+            } else if (child instanceof MulExpNode) {
+                IRValue operand = visitMulExp((MulExpNode) child);
+                if (left == null) {
+                    left = operand;
+                } else {
+                    String resultReg = newRegister();
+                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    
+                    Token.TokenType opType = lastOp.token.getTokenType();
+                    if (opType == Token.TokenType.MULT) {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.MUL, left, operand));
+                    } else if (opType == Token.TokenType.DIV) {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SDIV, left, operand));
+                    } else if (opType == Token.TokenType.MOD) {
+                        currentBlock.addInstruction(new BinaryInst(result, BinaryInst.OpType.SREM, left, operand));
+                    }
+                    left = result;
+                }
+            } else if (child instanceof TokenNode) {
+                lastOp = (TokenNode) child;
             }
-            left = result;
         }
+        
         return left;
     }
     
@@ -885,52 +966,119 @@ public class LLVMIRGenerator {
     
     private IRValue visitEqExp(EqExpNode node) {
         if (node.children.size() == 1) {
-            return visitRelExp((RelExpNode) node.children.get(0));
+            ASTnode child = node.children.get(0);
+            if (child instanceof RelExpNode) {
+                return visitRelExp((RelExpNode) child);
+            } else if (child instanceof EqExpNode) {
+                return visitEqExp((EqExpNode) child);
+            }
         }
         
-        IRValue left = visitRelExp((RelExpNode) node.children.get(0));
-        for (int i = 1; i < node.children.size(); i += 2) {
-            TokenNode op = (TokenNode) node.children.get(i);
-            IRValue right = visitRelExp((RelExpNode) node.children.get(i + 1));
+        IRValue left = null;
+        TokenNode lastOp = null;
+        
+        for (int i = 0; i < node.children.size(); i++) {
+            ASTnode child = node.children.get(i);
             
-            String resultReg = newRegister();
-            IRValue result = new IRValue(IRType.I32, resultReg);
-            
-            if (op.token.getTokenType() == Token.TokenType.EQL) {
-                currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.EQ, left, right));
-            } else {
-                currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.NE, left, right));
+            if (child instanceof RelExpNode) {
+                IRValue operand = visitRelExp((RelExpNode) child);
+                if (left == null) {
+                    left = operand;
+                } else {
+                    String resultReg = newRegister();
+                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    
+                    if (lastOp.token.getTokenType() == Token.TokenType.EQL) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.EQ, left, operand));
+                    } else {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.NE, left, operand));
+                    }
+                    left = result;
+                }
+            } else if (child instanceof EqExpNode) {
+                IRValue operand = visitEqExp((EqExpNode) child);
+                if (left == null) {
+                    left = operand;
+                } else {
+                    String resultReg = newRegister();
+                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    
+                    if (lastOp.token.getTokenType() == Token.TokenType.EQL) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.EQ, left, operand));
+                    } else {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.NE, left, operand));
+                    }
+                    left = result;
+                }
+            } else if (child instanceof TokenNode) {
+                lastOp = (TokenNode) child;
             }
-            left = result;
         }
+        
         return left;
     }
     
     private IRValue visitRelExp(RelExpNode node) {
         if (node.children.size() == 1) {
-            return visitAddExp((AddExpNode) node.children.get(0));
+            ASTnode child = node.children.get(0);
+            if (child instanceof AddExpNode) {
+                return visitAddExp((AddExpNode) child);
+            } else if (child instanceof RelExpNode) {
+                return visitRelExp((RelExpNode) child);
+            }
         }
         
-        IRValue left = visitAddExp((AddExpNode) node.children.get(0));
-        for (int i = 1; i < node.children.size(); i += 2) {
-            TokenNode op = (TokenNode) node.children.get(i);
-            IRValue right = visitAddExp((AddExpNode) node.children.get(i + 1));
+        IRValue left = null;
+        TokenNode lastOp = null;
+        
+        for (int i = 0; i < node.children.size(); i++) {
+            ASTnode child = node.children.get(i);
             
-            String resultReg = newRegister();
-            IRValue result = new IRValue(IRType.I32, resultReg);
-            
-            Token.TokenType opType = op.token.getTokenType();
-            if (opType == Token.TokenType.LSS) {
-                currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SLT, left, right));
-            } else if (opType == Token.TokenType.LEQ) {
-                currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SLE, left, right));
-            } else if (opType == Token.TokenType.GRE) {
-                currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SGT, left, right));
-            } else if (opType == Token.TokenType.GEQ) {
-                currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SGE, left, right));
+            if (child instanceof AddExpNode) {
+                IRValue operand = visitAddExp((AddExpNode) child);
+                if (left == null) {
+                    left = operand;
+                } else {
+                    String resultReg = newRegister();
+                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    
+                    Token.TokenType opType = lastOp.token.getTokenType();
+                    if (opType == Token.TokenType.LSS) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SLT, left, operand));
+                    } else if (opType == Token.TokenType.LEQ) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SLE, left, operand));
+                    } else if (opType == Token.TokenType.GRE) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SGT, left, operand));
+                    } else if (opType == Token.TokenType.GEQ) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SGE, left, operand));
+                    }
+                    left = result;
+                }
+            } else if (child instanceof RelExpNode) {
+                IRValue operand = visitRelExp((RelExpNode) child);
+                if (left == null) {
+                    left = operand;
+                } else {
+                    String resultReg = newRegister();
+                    IRValue result = new IRValue(IRType.I32, resultReg);
+                    
+                    Token.TokenType opType = lastOp.token.getTokenType();
+                    if (opType == Token.TokenType.LSS) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SLT, left, operand));
+                    } else if (opType == Token.TokenType.LEQ) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SLE, left, operand));
+                    } else if (opType == Token.TokenType.GRE) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SGT, left, operand));
+                    } else if (opType == Token.TokenType.GEQ) {
+                        currentBlock.addInstruction(new IcmpInst(result, IcmpInst.Condition.SGE, left, operand));
+                    }
+                    left = result;
+                }
+            } else if (child instanceof TokenNode) {
+                lastOp = (TokenNode) child;
             }
-            left = result;
         }
+        
         return left;
     }
 }
