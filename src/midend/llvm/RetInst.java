@@ -1,4 +1,4 @@
-package backend.llvm;
+package midend.llvm;
 
 public class RetInst extends IRInstruction {
     private IRValue returnValue;

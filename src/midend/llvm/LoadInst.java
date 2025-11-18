@@ -1,4 +1,4 @@
-package backend.llvm;
+package midend.llvm;
 
 public class LoadInst extends IRInstruction {
     private IRType loadType;

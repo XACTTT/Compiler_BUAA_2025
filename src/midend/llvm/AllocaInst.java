@@ -1,4 +1,4 @@
-package backend.llvm;
+package midend.llvm;
 
 public class AllocaInst extends IRInstruction {
     private IRType allocatedType;

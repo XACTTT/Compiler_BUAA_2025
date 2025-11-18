@@ -11,7 +11,7 @@ import frontend.FrontEnd;
 import frontend.ast.terminal.FuncTypeNode;
 import frontend.ast.terminal.TokenNode;
 import midend.MidEnd;
-import backend.LLVMIRGenerator;
+import midend.llvm.LLVMIRGenerator;
 
 public class Compiler {
  public static void main(String[] args) {

@@ -1,4 +1,4 @@
-package backend.llvm;
+package midend.llvm;
 
 public class BranchInst extends IRInstruction {
     private IRValue condition;

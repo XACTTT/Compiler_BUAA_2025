@@ -1,4 +1,4 @@
-package backend.llvm;
+package midend.llvm;
 
 public abstract class IRInstruction {
     protected IRValue result;

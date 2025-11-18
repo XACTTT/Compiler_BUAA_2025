@@ -1,6 +1,6 @@
-package backend;
+package midend.llvm;
 
-import backend.llvm.*;
+import midend.llvm.*;
 import frontend.Token;
 import frontend.ast.*;
 import frontend.ast.exp.*;
