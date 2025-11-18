@@ -103,17 +103,31 @@ public class LLVMIRGenerator {
                 IdentNode identNode = (IdentNode) varDef.children.get(0);
                 String varName = identNode.token.getValue();
                 
-                // Check if it's an array
-                boolean isArray = varDef.children.stream()
-                    .anyMatch(n -> n instanceof TokenNode && 
-                             ((TokenNode)n).token.getTokenType() == Token.TokenType.LBRACK);
-                
-                if (isArray) {
-                    // TODO: Handle global arrays
+                // 从符号表查询变量信息
+                Symbol symbol = symbolTable.findSymbol(varName);
+                if (symbol == null) {
+                    // 回退：从AST解析
+                    boolean isArray = varDef.children.stream()
+                        .anyMatch(n -> n instanceof TokenNode && 
+                                 ((TokenNode)n).token.getTokenType() == Token.TokenType.LBRACK);
+                    
+                    if (isArray) {
+                        // TODO: Handle global arrays
+                    } else {
+                        IRValue globalVar = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
+                        module.addGlobalVariable("@" + varName, new IRValue(0));
+                        varMap.put(varName, globalVar);
+                    }
                 } else {
-                    IRValue globalVar = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
-                    module.addGlobalVariable("@" + varName, new IRValue(0));
-                    varMap.put(varName, globalVar);
+                    // 使用符号表信息
+                    if (symbol.isArray()) {
+                        // TODO: Handle global arrays with size from symbol
+                        // Integer arraySize = symbol.getArraySize();
+                    } else {
+                        IRValue globalVar = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
+                        module.addGlobalVariable("@" + varName, new IRValue(0));
+                        varMap.put(varName, globalVar);
+                    }
                 }
             }
         }
@@ -126,11 +140,28 @@ public class LLVMIRGenerator {
                 IdentNode identNode = (IdentNode) constDef.children.get(0);
                 String varName = identNode.token.getValue();
                 
-                // For const, we can try to evaluate the value
-                // For simplicity, treat as global variable
-                IRValue globalVar = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
-                module.addGlobalVariable("@" + varName, new IRValue(0));
-                varMap.put(varName, globalVar);
+                // 从符号表查询常量信息
+                Symbol symbol = symbolTable.findSymbol(varName);
+                if (symbol != null && symbol.isConstant()) {
+                    Integer constValue = symbol.getConstValue();
+                    if (constValue != null && !symbol.isArray()) {
+                        // 对于常量，可以选择不生成全局变量，直接使用值
+                        // 但为了兼容性，这里仍生成全局变量，但记录它是常量
+                        IRValue globalVar = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
+                        module.addGlobalVariable("@" + varName, new IRValue(constValue));
+                        varMap.put(varName, globalVar);
+                    } else {
+                        // 数组常量或无法计算值的常量
+                        IRValue globalVar = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
+                        module.addGlobalVariable("@" + varName, new IRValue(0));
+                        varMap.put(varName, globalVar);
+                    }
+                } else {
+                    // 回退方案
+                    IRValue globalVar = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
+                    module.addGlobalVariable("@" + varName, new IRValue(0));
+                    varMap.put(varName, globalVar);
+                }
             }
         }
     }
@@ -291,6 +322,9 @@ public class LLVMIRGenerator {
                 IdentNode identNode = (IdentNode) varDef.children.get(0);
                 String varName = identNode.token.getValue();
                 
+                // 从符号表查询变量信息
+                Symbol symbol = symbolTable.findSymbol(varName);
+                
                 // Allocate on stack
                 String allocaReg = newRegister();
                 IRValue allocaPtr = new IRValue(IRType.getPointerType(IRType.I32), allocaReg);
@@ -314,7 +348,26 @@ public class LLVMIRGenerator {
                 IdentNode identNode = (IdentNode) constDef.children.get(0);
                 String varName = identNode.token.getValue();
                 
-                // Allocate on stack for const too
+                // 从符号表查询常量信息
+                Symbol symbol = symbolTable.findSymbol(varName);
+                
+                if (symbol != null && symbol.isConstant() && !symbol.isArray()) {
+                    Integer constValue = symbol.getConstValue();
+                    if (constValue != null) {
+                        // 对于已知值的常量，仍然分配空间但标记为常量
+                        // 这样在使用时可以选择直接使用常量值或load
+                        String allocaReg = newRegister();
+                        IRValue allocaPtr = new IRValue(IRType.getPointerType(IRType.I32), allocaReg);
+                        currentBlock.addInstruction(new AllocaInst(allocaPtr, IRType.I32));
+                        
+                        // 初始化为常量值
+                        currentBlock.addInstruction(new StoreInst(new IRValue(constValue), allocaPtr));
+                        varMap.put(varName, allocaPtr);
+                        return;
+                    }
+                }
+                
+                // 无法获取常量值或是数组，按普通方式处理
                 String allocaReg = newRegister();
                 IRValue allocaPtr = new IRValue(IRType.getPointerType(IRType.I32), allocaReg);
                 currentBlock.addInstruction(new AllocaInst(allocaPtr, IRType.I32));
@@ -942,6 +995,20 @@ public class LLVMIRGenerator {
     }
     
     private IRValue visitLVal(LValNode node) {
+        IdentNode identNode = (IdentNode) node.children.get(0);
+        String varName = identNode.token.getValue();
+        
+        // 查询符号表，看是否为常量
+        Symbol symbol = symbolTable.findSymbol(varName);
+        if (symbol != null && symbol.isConstant() && !symbol.isArray()) {
+            Integer constValue = symbol.getConstValue();
+            if (constValue != null) {
+                // 直接返回常量值，无需load指令
+                return new IRValue(constValue);
+            }
+        }
+        
+        // 不是常量或无法获取常量值，正常load
         IRValue ptr = visitLValAsPointer(node);
         
         // Load value from pointer
@@ -957,8 +1024,14 @@ public class LLVMIRGenerator {
         
         IRValue ptr = varMap.get(varName);
         if (ptr == null) {
-            // Maybe global variable
-            ptr = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
+            // Maybe global variable - check symbol table
+            Symbol symbol = symbolTable.findSymbol(varName);
+            if (symbol != null && symbol.isGlobal()) {
+                ptr = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
+            } else {
+                // Fallback: assume it's global
+                ptr = new IRValue(IRType.getPointerType(IRType.I32), "@" + varName);
+            }
         }
         
         return ptr;
