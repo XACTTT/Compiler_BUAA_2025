@@ -64,11 +64,102 @@ public class SemanticAnalyzer {
             int dim = isArray ? 1 : 0;
             Symbol symbol = new Symbol(name, type, lineNum);
             symbol.setDimension(dim);
+            
+            // 标记是否为全局变量（scopeId为1表示全局）
+            symbol.setGlobal(symbolTable.getCurrentScopeId() == 1);
+            
+            // 对于非数组常量，尝试提取常量值
+            if (!isArray) {
+                for (ASTnode child : node.children) {
+                    if (child instanceof ConstInitValNode) {
+                        Integer constVal = evaluateConstInitVal((ConstInitValNode) child);
+                        if (constVal != null) {
+                            symbol.setConstValue(constVal);
+                        }
+                        break;
+                    }
+                }
+            }
+            
             symbolTable.addSymbol(symbol);
         }
         for (ASTnode child : node.children) {
             if (child != null && child != identNode) {
                 child.accept(this);
+            }
+        }
+        return null;
+    }
+    
+    // 辅助方法：计算常量初始值
+    private Integer evaluateConstInitVal(ConstInitValNode node) {
+        // 简单情况：ConstInitVal -> ConstExp
+        for (ASTnode child : node.children) {
+            if (child instanceof ConstExpNode) {
+                return evaluateConstExp((ConstExpNode) child);
+            }
+        }
+        return null;
+    }
+    
+    // 辅助方法：计算常量表达式（简单实现）
+    private Integer evaluateConstExp(ConstExpNode node) {
+        // 这里只处理最简单的情况：直接的数字常量
+        // 完整实现需要递归计算整个表达式
+        for (ASTnode child : node.children) {
+            if (child instanceof AddExpNode) {
+                return evaluateAddExp((AddExpNode) child);
+            }
+        }
+        return null;
+    }
+    
+    private Integer evaluateAddExp(AddExpNode node) {
+        for (ASTnode child : node.children) {
+            if (child instanceof MulExpNode) {
+                return evaluateMulExp((MulExpNode) child);
+            }
+        }
+        return null;
+    }
+    
+    private Integer evaluateMulExp(MulExpNode node) {
+        for (ASTnode child : node.children) {
+            if (child instanceof UnaryExpNode) {
+                return evaluateUnaryExp((UnaryExpNode) child);
+            }
+        }
+        return null;
+    }
+    
+    private Integer evaluateUnaryExp(UnaryExpNode node) {
+        for (ASTnode child : node.children) {
+            if (child instanceof PrimaryExpNode) {
+                return evaluatePrimaryExp((PrimaryExpNode) child);
+            }
+        }
+        return null;
+    }
+    
+    private Integer evaluatePrimaryExp(PrimaryExpNode node) {
+        for (ASTnode child : node.children) {
+            if (child instanceof NumberNode) {
+                return evaluateNumber((NumberNode) child);
+            }
+        }
+        return null;
+    }
+    
+    private Integer evaluateNumber(NumberNode node) {
+        // NumberNode contains a TokenNode child with the actual number
+        for (ASTnode child : node.children) {
+            if (child instanceof TokenNode) {
+                TokenNode tokenNode = (TokenNode) child;
+                try {
+                    return Integer.parseInt(tokenNode.token.getValue());
+                } catch (NumberFormatException e) {
+                    return null;
+                }
             }
         }
         return null;
@@ -117,6 +208,23 @@ public SymbolType visit(VarDeclNode node) {
 
             symbol = new Symbol(name, type, lineNum);
             symbol.setDimension(dim);
+            
+            // 标记是否为全局变量（scopeId为1表示全局）
+            symbol.setGlobal(symbolTable.getCurrentScopeId() == 1);
+            
+            // 如果是数组，提取数组大小
+            if (isArray) {
+                for (ASTnode child : node.children) {
+                    if (child instanceof ConstExpNode) {
+                        Integer size = evaluateConstExp((ConstExpNode) child);
+                        if (size != null) {
+                            symbol.setArraySize(size);
+                        }
+                        break;
+                    }
+                }
+            }
+            
             symbolTable.addSymbol(symbol);
         }
 

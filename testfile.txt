@@ -1,14 +1,9 @@
-void f0(int a {
-
-}
-
-void f1(int x, int y, int z) {
-    f0(2024);
-}
+const int a = 10;
+const int b = 20;
 
 int main() {
-    f1(1)
-    int a[2;
-
+    int x;
+    x = a + b;
+    printf("%d\n", x);
     return 0;
 }
