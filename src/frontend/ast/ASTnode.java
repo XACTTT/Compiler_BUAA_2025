@@ -1,6 +1,7 @@
 package frontend.ast;
 
 import midend.SemanticAnalyzer;
+import midend.symbol.Scope;
 import midend.symbol.SymbolType;
 
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ public abstract class ASTnode {
     public SyntaxType syntaxType;
     public ArrayList<ASTnode> children = new ArrayList<>();
     public boolean printSign;
+    public Scope scope = null;
     public ASTnode( SyntaxType syntaxType) {
         this.syntaxType = syntaxType;
         this.printSign = true;

@@ -145,7 +145,7 @@ public SymbolType visit(VarDeclNode node) {
         }
         currentFunction = funcSymbol; // 设置当前函数
         symbolTable.enterScope();
-
+        node.scope = symbolTable.getCurrentScope();
         if(node.children.get(3) instanceof FuncFParamsNode){
             FuncFParamsNode funcFParamsNode = (FuncFParamsNode) node.children.get(3);
             visitFuncFParams(funcFParamsNode, funcSymbol);
@@ -217,7 +217,7 @@ public SymbolType visit(VarDeclNode node) {
     public SymbolType visit(MainFuncDefNode node) {
         currentFunction = new Symbol("main", SymbolType.INT_FUNC, 0); // 临时
         symbolTable.enterScope();
-
+        node.scope = symbolTable.getCurrentScope();
         BlockNode blockNode =(BlockNode) node.children.get(4);
         for (int i = 1; i < blockNode.children.size() - 1; i++) {
             ASTnode blockItem = blockNode.children.get(i);
@@ -253,6 +253,7 @@ public SymbolType visit(VarDeclNode node) {
 
     public SymbolType visit(BlockNode node) {
         symbolTable.enterScope();
+        node.scope = symbolTable.getCurrentScope();
         for (ASTnode child : node.children) {
             if (child != null) {
                 child.accept(this);

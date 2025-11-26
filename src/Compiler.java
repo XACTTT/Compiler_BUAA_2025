@@ -49,7 +49,18 @@ public class Compiler {
    try (FileWriter writer = new FileWriter(outputFileSymbol)) {
      writer.write(midEnd.GetSymbolTable().toString());
    }
+   if (!errorHandler.hasErrors()) {
+    // 1. 创建 IRBuilder
+    midend.IRBuilder irBuilder = new midend.IRBuilder(midEnd.GetSymbolTable());
 
+    // 2. 访问 AST 根节点，开始生成
+    irBuilder.irVisit(frontend.getAstTree()); // 传入 CompUnitNode
+
+    // 3. 输出到文件 llvm_ir.txt
+    try (FileWriter writer = new FileWriter("llvm_ir.txt")) {
+     writer.write(irBuilder.getModule().toString());
+    }
+   }
   } catch (IOException e) {
    System.err.println("错误：无法读取输入文件: " + e.getMessage());
   } catch (Exception e) {

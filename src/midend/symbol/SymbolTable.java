@@ -8,6 +8,14 @@ public class SymbolTable {
     private Scope currentNode; // 指向当前作用域
     private int nextScopeId = 1;
 
+    public Scope getCurrentScope() {
+        return currentNode;
+    }
+
+    public void setCurrentScope(Scope scope) {
+        this.currentNode = scope;
+    }
+
     private ArrayList<Symbol> orderedSymbols = new ArrayList<>();
 
     public SymbolTable() {
