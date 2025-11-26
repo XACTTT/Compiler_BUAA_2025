@@ -93,17 +93,14 @@ public class IRBuilder {
         }
     }
 
-    // 生成局部寄存器名: %v0, %v1, %v2...
-    // 使用命名寄存器便于调试，LLVM不强制要求编号连续
     private String nextReg() {
-        return "%v" + (regCounter++);
+        return "%" + (regCounter++);
     }
 
     private void resetLabelCounter() {
         labelCounters.clear();
     }
 
-    // 生成唯一的基本块名: if_true_5, for_cond_2...
     private String getUniqueName(String prefix) {
         int next = labelCounters.getOrDefault(prefix, 0);
         labelCounters.put(prefix, next + 1);
