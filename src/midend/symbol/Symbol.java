@@ -15,6 +15,7 @@ public class Symbol {
     private ArrayList<SymbolType> paramTypes = new ArrayList<>();
     private int dimension = 0; // 0: 非数组, 1: 一维
     private Integer constValue; // 标量常量的编译期值
+    private ArrayList<Integer> constArrayValues; // 常量数组的元素值
 
     public Symbol(String name, SymbolType type, int lineNum) {
         this.name = name;
@@ -40,6 +41,8 @@ public class Symbol {
     public void setDimension(int dimension) { this.dimension = dimension; }
     public Integer getConstValue() { return constValue; }
     public void setConstValue(Integer constValue) { this.constValue = constValue; }
+    public ArrayList<Integer> getConstArrayValues() { return constArrayValues; }
+    public void setConstArrayValues(ArrayList<Integer> constArrayValues) { this.constArrayValues = constArrayValues; }
 
     // 可选: toString() 用于调试
     @Override

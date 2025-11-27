@@ -13,6 +13,7 @@ import midend.llvmIR.value.instr.*;
 import midend.llvmIR.value.constant.*;
 import midend.symbol.SymbolTable;
 import midend.symbol.Symbol;
+import midend.symbol.SymbolType;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +39,8 @@ public class IRBuilder {
 
     private int regCounter = 0;
     private Map<String, Integer> labelCounters = new HashMap<>();
+    private final Map<String, GlobalVar> stringLiteralPool = new HashMap<>();
+    private int stringLiteralCounter = 0;
 
     public IRBuilder(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;
@@ -170,13 +173,28 @@ public class IRBuilder {
         }
 
         boolean isArray = isArraySymbol(symbol);
+        boolean isStaticSymbol = isStaticSymbol(symbol);
         int arrayLen = resolveArrayLength(node, isArray);
         ASTnode initNode = extractInitNode(node);
 
         Integer constScalarValue = null;
-        if (isConst && !isArray) {
-            constScalarValue = evalConstInit(initNode);
-            symbol.setConstValue(constScalarValue);
+        if (isConst) {
+            if (!isArray) {
+                constScalarValue = evalConstInit(initNode);
+                symbol.setConstValue(constScalarValue);
+            } else {
+                ArrayList<Integer> values = new ArrayList<>();
+                collectConstInitValues(initNode, values);
+                while (values.size() < arrayLen) {
+                    values.add(0);
+                }
+                symbol.setConstArrayValues(values);
+            }
+        }
+
+        if (isStaticSymbol && !isGlobalScope) {
+            handleStaticLocalDefinition(symbol, name, isConst, isArray, arrayLen, initNode, constScalarValue);
+            return;
         }
 
         if (isGlobalScope) {
@@ -188,6 +206,12 @@ public class IRBuilder {
 
     private boolean isArraySymbol(Symbol symbol) {
         return symbol != null && symbol.getDimension() > 0;
+    }
+
+    private boolean isStaticSymbol(Symbol symbol) {
+        if (symbol == null) return false;
+        return symbol.getType() == SymbolType.STATIC_INT
+                || symbol.getType() == SymbolType.STATIC_INT_ARRAY;
     }
 
     private int resolveArrayLength(ASTnode node, boolean isArray) {
@@ -269,6 +293,34 @@ public class IRBuilder {
         else initLocalArrayWithExprs(alloca, initNode, arrayLen);
     }
 
+    private void handleStaticLocalDefinition(Symbol symbol, String name, boolean isConst,
+                                             boolean isArray, int arrayLen, ASTnode initNode,
+                                             Integer constScalarValue) {
+        String owner = currentFunction != null ? currentFunction.getName() : "global";
+        String globalName = "s_" + owner + "_" + name + "_" + symbol.getScopeId();
+
+        if (!isArray) {
+            Constant initVal;
+            if (constScalarValue != null) {
+                initVal = new ConstantInt(constScalarValue);
+            } else if (initNode != null) {
+                initVal = buildScalarConstant(initNode);
+            } else {
+                initVal = new ConstantInt(0);
+            }
+            GlobalVar globalVar = new GlobalVar(globalName, initVal, isConst);
+            module.addGlobalVar(globalVar);
+            symbol.setIrValue(globalVar);
+            return;
+        }
+
+        ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
+        Constant arrayInit = buildGlobalArrayInit(arrayType, initNode, arrayLen);
+        GlobalVar globalVar = new GlobalVar(globalName, arrayInit, isConst);
+        module.addGlobalVar(globalVar);
+        symbol.setIrValue(globalVar);
+    }
+
     private void initLocalArrayWithExprs(Value basePtr, ASTnode initNode, int arrayLen) {
         ArrayList<EXPnode> initExps = new ArrayList<>();
         collectInitExpNodes(initNode, initExps);
@@ -316,9 +368,16 @@ public class IRBuilder {
             IdentNode ident = (IdentNode) node.children.get(0);
             Symbol symbol = symbolTable.findSymbol(ident.token.getValue());
             if (symbol != null && symbol.getType().isConst()) {
-                Integer cached = symbol.getConstValue();
-                if (cached != null && node.children.size() == 1) {
-                    return cached;
+                if (node.children.size() == 1) {
+                    Integer cached = symbol.getConstValue();
+                    if (cached != null) {
+                        return cached;
+                    }
+                } else {
+                    Integer arrVal = evalConstArrayElement(symbol, (LValNode) node);
+                    if (arrVal != null) {
+                        return arrVal;
+                    }
                 }
             }
             return null;
@@ -396,9 +455,14 @@ public class IRBuilder {
         if (node instanceof LValNode) {
             IdentNode ident = (IdentNode) node.children.get(0);
             Symbol symbol = symbolTable.findSymbol(ident.token.getValue());
-            if (symbol != null && symbol.getType().isConst() && node.children.size() == 1) {
-                Integer cached = symbol.getConstValue();
-                if (cached != null) return cached;
+            if (symbol != null && symbol.getType().isConst()) {
+                if (node.children.size() == 1) {
+                    Integer cached = symbol.getConstValue();
+                    if (cached != null) return cached;
+                } else {
+                    Integer arrVal = evalConstArrayElement(symbol, (LValNode) node);
+                    if (arrVal != null) return arrVal;
+                }
             }
             return 0;
         }
@@ -410,6 +474,41 @@ public class IRBuilder {
             if (child != null) return evalConstExp(child);
         }
         return 0;
+    }
+
+    private Integer evalConstArrayElement(Symbol symbol, LValNode node) {
+        ArrayList<Integer> values = symbol.getConstArrayValues();
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        Integer index = computeConstArrayIndex(node);
+        if (index == null) {
+            return null;
+        }
+        if (index < 0 || index >= values.size()) {
+            return null;
+        }
+        return values.get(index);
+    }
+
+    private Integer computeConstArrayIndex(LValNode node) {
+        ArrayList<Integer> indices = new ArrayList<>();
+        for (int i = 1; i < node.children.size(); i++) {
+            ASTnode child = node.children.get(i);
+            if (child instanceof TokenNode && ((TokenNode) child).token.getTokenType() == Token.TokenType.LBRACK) {
+                if (i + 1 < node.children.size()) {
+                    ASTnode expNode = node.children.get(i + 1);
+                    indices.add(evalConstExp(expNode));
+                }
+            }
+        }
+        if (indices.isEmpty()) {
+            return null;
+        }
+        if (indices.size() > 1) {
+            return null; // 多维数组未实现，返回空交由调用方兜底
+        }
+        return indices.get(0);
     }
 
     private int extractArrayLength(ASTnode node) {
@@ -683,24 +782,32 @@ public class IRBuilder {
             if(child instanceof EXPnode) exps.add((EXPnode)child);
         }
 
+        StringBuilder segment = new StringBuilder();
         for (int i = 0; i < fmt.length(); i++) {
-            if (i < fmt.length() - 1 && fmt.charAt(i) == '%' && fmt.charAt(i + 1) == 'd') {
+            char ch = fmt.charAt(i);
+            if (ch == '\\') {
+                if (i + 1 < fmt.length()) {
+                    char escaped = fmt.charAt(++i);
+                    segment.append(decodeEscapeChar(escaped));
+                } else {
+                    segment.append('\\');
+                }
+                continue;
+            }
+
+            if (ch == '%' && i + 1 < fmt.length() && fmt.charAt(i + 1) == 'd') {
+                emitStringSegment(segment);
                 Value val = irVisitExp(exps.get(expIdx++));
                 ArrayList<Value> args = new ArrayList<>();
                 args.add(val);
                 new Instruction.CallInst(putintFunc, args, currentBlock).setName("");
                 i++;
-            } else if (fmt.charAt(i) == '\\' && i < fmt.length() - 1 && fmt.charAt(i + 1) == 'n') {
-                ArrayList<Value> args = new ArrayList<>();
-                args.add(new ConstantInt(10));
-                new Instruction.CallInst(putchFunc, args, currentBlock).setName("");
-                i++;
-            } else {
-                ArrayList<Value> args = new ArrayList<>();
-                args.add(new ConstantInt(fmt.charAt(i)));
-                new Instruction.CallInst(putchFunc, args, currentBlock).setName("");
+                continue;
             }
+
+            segment.append(ch);
         }
+        emitStringSegment(segment);
     }
 
 
@@ -745,6 +852,91 @@ public class IRBuilder {
         gepIdx.addAll(indices);
 
         Instruction.GetElementPtrInst gep = new Instruction.GetElementPtrInst(basePtr, gepIdx, currentBlock);
+        gep.setName(nextReg());
+        return gep;
+    }
+
+    private Value loadOrDecayLVal(LValNode node) {
+        IdentNode ident = (IdentNode) node.children.get(0);
+        Symbol symbol = symbolTable.findSymbol(ident.token.getValue());
+        if (symbol == null) {
+            throw new RuntimeException("变量 " + ident.token.getValue() + " 不存在于符号表");
+        }
+
+        boolean isArraySymbol = symbol.getDimension() > 0;
+        boolean hasIndex = node.children.size() > 1;
+
+        if (isArraySymbol && !hasIndex) {
+            Value basePtr = symbol.getIrValue();
+            if (basePtr == null) {
+                throw new RuntimeException("变量 " + ident.token.getValue() + " 未绑定IR指针");
+            }
+
+            if (basePtr.getType() instanceof PointerType) {
+                PointerType pointerType = (PointerType) basePtr.getType();
+                Type pointed = pointerType.getPointedType();
+                if (pointed instanceof ArrayType) {
+                    ArrayList<Value> gepIdx = new ArrayList<>();
+                    gepIdx.add(new ConstantInt(0));
+                    gepIdx.add(new ConstantInt(0));
+                    Instruction.GetElementPtrInst gep = new Instruction.GetElementPtrInst(basePtr, gepIdx, currentBlock);
+                    gep.setName(nextReg());
+                    return gep;
+                }
+            }
+            return basePtr;  // 对函数形参等已退化为 i32* 的情况，直接返回
+        }
+
+        Value addr = irVisitLValAddr(node);
+        Instruction.LoadInst load = new Instruction.LoadInst(addr, currentBlock);
+        load.setName(nextReg());
+        return load;
+    }
+
+    private char decodeEscapeChar(char escaped) {
+        switch (escaped) {
+            case 'n':
+                return '\n';
+            case 't':
+                return '\t';
+            case 'r':
+                return '\r';
+            case '\\':
+                return '\\';
+            case '"':
+                return '"';
+            case '0':
+                return '\0';
+            default:
+                return escaped;
+        }
+    }
+
+    private void emitStringSegment(StringBuilder segment) {
+        if (segment == null || segment.length() == 0) {
+            return;
+        }
+        Value ptr = buildStringLiteralPtr(segment.toString());
+        ArrayList<Value> args = new ArrayList<>();
+        args.add(ptr);
+        new Instruction.CallInst(putstrFunc, args, currentBlock).setName("");
+        segment.setLength(0);
+    }
+
+    private Value buildStringLiteralPtr(String content) {
+        GlobalVar global = stringLiteralPool.get(content);
+        if (global == null) {
+            ConstantStr cstr = new ConstantStr(content);
+            String name = ".str." + (stringLiteralCounter++);
+            global = new GlobalVar(name, cstr, true);
+            module.addGlobalVar(global);
+            stringLiteralPool.put(content, global);
+        }
+
+        ArrayList<Value> idxs = new ArrayList<>();
+        idxs.add(new ConstantInt(0));
+        idxs.add(new ConstantInt(0));
+        Instruction.GetElementPtrInst gep = new Instruction.GetElementPtrInst(global, idxs, currentBlock);
         gep.setName(nextReg());
         return gep;
     }
@@ -838,10 +1030,7 @@ public class IRBuilder {
         if (node instanceof UnaryExpNode) return irVisit((UnaryExpNode) node);
         if (node instanceof PrimaryExpNode) return irVisit((PrimaryExpNode) node);
         if (node instanceof LValNode) {
-            Value addr = irVisitLValAddr((LValNode) node);
-            Instruction.LoadInst load = new Instruction.LoadInst(addr, currentBlock);
-            load.setName(nextReg());
-            return load;
+            return loadOrDecayLVal((LValNode) node);
         }
         if (node instanceof NumberNode) return irVisit((NumberNode) node);
         if (!node.children.isEmpty()) return irVisitExp(node.children.get(0));
@@ -949,10 +1138,7 @@ public class IRBuilder {
         ASTnode child = node.children.get(0);
         if (child instanceof NumberNode) return irVisit((NumberNode) child);
         if (child instanceof LValNode) {
-            Value addr = irVisitLValAddr((LValNode) child);
-            Instruction.LoadInst load = new Instruction.LoadInst(addr, currentBlock);
-            load.setName(nextReg());
-            return load;
+            return loadOrDecayLVal((LValNode) child);
         }
         return null;
     }

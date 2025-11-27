@@ -18,9 +18,32 @@ public class ConstantStr extends Constant {
 
     @Override
     public String toString() {
-        // 输出格式: c"Hello World\00"
-        // 需要处理转义字符，简单起见先把 \n 替换为 \0A
-        String printContent = content.replace("\n", "\\0A") + "\\00";
-        return "c\"" + printContent + "\"";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < content.length(); i++) {
+            char ch = content.charAt(i);
+            sb.append(encodeChar(ch));
+        }
+        sb.append("\\00");
+        return "c\"" + sb + "\"";
+    }
+
+    private String encodeChar(char ch) {
+        switch (ch) {
+            case '\n':
+                return "\\0A";
+            case '\t':
+                return "\\09";
+            case '\r':
+                return "\\0D";
+            case '"':
+                return "\\22";
+            case '\\':
+                return "\\5C";
+            default:
+                if (ch >= 32 && ch <= 126) {
+                    return Character.toString(ch);
+                }
+                return String.format("\\%02X", ch & 0xFF);
+        }
     }
 }
