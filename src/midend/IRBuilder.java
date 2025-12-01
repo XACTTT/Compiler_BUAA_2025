@@ -117,6 +117,20 @@ public class IRBuilder {
         return block;
     }
 
+
+    private Symbol findSymbolWithIR(String name) {
+
+        midend.symbol.Scope currentScope = symbolTable.getCurrentScope();
+        while (currentScope != null) {
+            Symbol symbol = currentScope.findSymbolCurrent(name);
+            if (symbol != null && symbol.getIrValue() != null) {
+                return symbol;
+            }
+            currentScope = currentScope.getParent();
+        }
+        return null;
+    }
+
     public void irVisit(CompUnitNode node) {
         symbolTable.setCurrentScope(symbolTable.getRoot());
         isGlobalScope = true;
@@ -157,14 +171,6 @@ public class IRBuilder {
     }
 
     public void irVisit(VarDefNode node) {
-        handleVarOrConstDef(node, false);
-    }
-
-    public void irVisit(ConstDefNode node) {
-        handleVarOrConstDef(node, true);
-    }
-
-    private void handleVarOrConstDef(ASTnode node, boolean isConst) {
         IdentNode ident = (IdentNode) node.children.get(0);
         String name = ident.token.getValue();
         Symbol symbol = symbolTable.findSymbol(name);
@@ -177,32 +183,147 @@ public class IRBuilder {
         int arrayLen = resolveArrayLength(node, isArray);
         ASTnode initNode = extractInitNode(node);
 
-        Integer constScalarValue = null;
-        if (isConst) {
-            if (!isArray) {
-                constScalarValue = evalConstInit(initNode);
-                symbol.setConstValue(constScalarValue);
-            } else {
-                ArrayList<Integer> values = new ArrayList<>();
-                collectConstInitValues(initNode, values);
-                while (values.size() < arrayLen) {
-                    values.add(0);
-                }
-                symbol.setConstArrayValues(values);
-            }
-        }
-
         if (isStaticSymbol && !isGlobalScope) {
-            handleStaticLocalDefinition(symbol, name, isConst, isArray, arrayLen, initNode, constScalarValue);
+            // static变量：作为全局变量处理
+            String owner = currentFunction != null ? currentFunction.getName().replace("@", "") : "global";
+            String globalName = "s_" + owner + "_" + name + "_" + symbol.getScopeId();
+
+            if (!isArray) {
+                Constant initVal = initNode != null ? buildScalarConstant(initNode) : new ConstantInt(0);
+                GlobalVar globalVar = new GlobalVar(globalName, initVal, false);
+                module.addGlobalVar(globalVar);
+                symbol.setIrValue(globalVar);
+            } else {
+                ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
+                Constant arrayInit = buildGlobalArrayInit(arrayType, initNode, arrayLen);
+                GlobalVar globalVar = new GlobalVar(globalName, arrayInit, false);
+                module.addGlobalVar(globalVar);
+                symbol.setIrValue(globalVar);
+            }
             return;
         }
 
         if (isGlobalScope) {
-            handleGlobalDefinition(symbol, name, isConst, isArray, arrayLen, initNode, constScalarValue);
+            // 全局变量
+            String globalName = "g_" + name;
+            if (!isArray) {
+                Constant initVal = buildScalarConstant(initNode);
+                GlobalVar globalVar = new GlobalVar(globalName, initVal, false);
+                module.addGlobalVar(globalVar);
+                symbol.setIrValue(globalVar);
+            } else {
+                ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
+                Constant arrayInit = buildGlobalArrayInit(arrayType, initNode, arrayLen);
+                GlobalVar globalVar = new GlobalVar(globalName, arrayInit, false);
+                module.addGlobalVar(globalVar);
+                symbol.setIrValue(globalVar);
+            }
         } else {
-            handleLocalDefinition(symbol, isConst, isArray, arrayLen, initNode, constScalarValue);
+            // 局部变量
+            if (!isArray) {
+                Instruction alloca = new Instruction.AllocaInst(new IntegerType(32), currentBlock);
+                alloca.setName(nextReg());
+                symbol.setIrValue(alloca);
+                if (initNode != null) {
+                    Value val = irVisit((InitValNode) initNode);
+                    new Instruction.StoreInst(val, alloca, currentBlock);
+                }
+            } else {
+                ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
+                Instruction alloca = new Instruction.AllocaInst(arrayType, currentBlock);
+                alloca.setName(nextReg());
+                symbol.setIrValue(alloca);
+                if (initNode != null) {
+                    initLocalArrayWithExprs(alloca, initNode, arrayLen);
+                }
+            }
         }
     }
+
+    public void irVisit(ConstDefNode node) {
+        IdentNode ident = (IdentNode) node.children.get(0);
+        String name = ident.token.getValue();
+        Symbol symbol = symbolTable.findSymbol(name);
+        if (symbol == null) {
+            throw new RuntimeException("符号 " + name + " 不存在于符号表");
+        }
+
+        boolean isArray = isArraySymbol(symbol);
+        boolean isStaticSymbol = isStaticSymbol(symbol);
+        int arrayLen = resolveArrayLength(node, isArray);
+        ASTnode initNode = extractInitNode(node);
+
+        // 常量求值并缓存到符号表
+        int constScalarValue = 0;
+        if (!isArray) {
+            constScalarValue = evalConstInit(initNode);
+            symbol.setConstValue(constScalarValue);
+        } else {
+            ArrayList<Integer> values = new ArrayList<>();
+            collectConstInitValues(initNode, values);
+            while (values.size() < arrayLen) {
+                values.add(0);
+            }
+            symbol.setConstArrayValues(values);
+        }
+
+        if (isStaticSymbol && !isGlobalScope) {
+            // static const变量：作为全局常量处理
+            String owner = currentFunction != null ? currentFunction.getName().replace("@", "") : "global";
+            String globalName = "s_" + owner + "_" + name + "_" + symbol.getScopeId();
+
+            if (!isArray) {
+                Constant initVal = new ConstantInt(constScalarValue);
+                GlobalVar globalVar = new GlobalVar(globalName, initVal, true);
+                module.addGlobalVar(globalVar);
+                symbol.setIrValue(globalVar);
+            } else {
+                ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
+                Constant arrayInit = buildGlobalArrayInit(arrayType, initNode, arrayLen);
+                GlobalVar globalVar = new GlobalVar(globalName, arrayInit, true);
+                module.addGlobalVar(globalVar);
+                symbol.setIrValue(globalVar);
+            }
+            return;
+        }
+
+        if (isGlobalScope) {
+            // 全局常量
+            String globalName = "g_" + name;
+            if (!isArray) {
+                Constant initVal = new ConstantInt(constScalarValue);
+                GlobalVar globalVar = new GlobalVar(globalName, initVal, true);
+                module.addGlobalVar(globalVar);
+                symbol.setIrValue(globalVar);
+            } else {
+                ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
+                Constant arrayInit = buildGlobalArrayInit(arrayType, initNode, arrayLen);
+                GlobalVar globalVar = new GlobalVar(globalName, arrayInit, true);
+                module.addGlobalVar(globalVar);
+                symbol.setIrValue(globalVar);
+            }
+        } else {
+            // 局部常量
+            if (!isArray) {
+                Instruction alloca = new Instruction.AllocaInst(new IntegerType(32), currentBlock);
+                alloca.setName(nextReg());
+                symbol.setIrValue(alloca);
+                if (initNode != null) {
+                    Value val = new ConstantInt(constScalarValue);
+                    new Instruction.StoreInst(val, alloca, currentBlock);
+                }
+            } else {
+                ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
+                Instruction alloca = new Instruction.AllocaInst(arrayType, currentBlock);
+                alloca.setName(nextReg());
+                symbol.setIrValue(alloca);
+                if (initNode != null) {
+                    initLocalArrayWithConst(alloca, initNode, arrayLen);
+                }
+            }
+        }
+    }
+
 
     private boolean isArraySymbol(Symbol symbol) {
         return symbol != null && symbol.getDimension() > 0;
@@ -217,7 +338,10 @@ public class IRBuilder {
     private int resolveArrayLength(ASTnode node, boolean isArray) {
         if (!isArray) return 0;
         int len = extractArrayLength(node);
-        return len > 0 ? len : 1;
+        if (len <= 0) {
+            throw new RuntimeException("数组长度必须为正整数，当前值: " + len);
+        }
+        return len;
     }
 
     private ASTnode extractInitNode(ASTnode node) {
@@ -225,27 +349,6 @@ public class IRBuilder {
         ASTnode last = node.children.get(node.children.size() - 1);
         if (last instanceof InitValNode || last instanceof ConstInitValNode) return last;
         return null;
-    }
-
-    private void handleGlobalDefinition(Symbol symbol, String name, boolean isConst,
-                                        boolean isArray, int arrayLen, ASTnode initNode,
-                                        Integer constScalarValue) {
-        String globalName = "g_" + name;
-        if (!isArray) {
-            Constant initVal = constScalarValue != null
-                    ? new ConstantInt(constScalarValue)
-                    : buildScalarConstant(initNode);
-            GlobalVar globalVar = new GlobalVar(globalName, initVal, isConst);
-            module.addGlobalVar(globalVar);
-            symbol.setIrValue(globalVar);
-            return;
-        }
-
-        ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
-        Constant arrayInit = buildGlobalArrayInit(arrayType, initNode, arrayLen);
-        GlobalVar globalVar = new GlobalVar(globalName, arrayInit, isConst);
-        module.addGlobalVar(globalVar);
-        symbol.setIrValue(globalVar);
     }
 
     private Constant buildScalarConstant(ASTnode initNode) {
@@ -261,64 +364,6 @@ public class IRBuilder {
         collectConstInitValues(initNode, values);
         ArrayList<Constant> elements = convertToConstantList(values, arrayLen);
         return ConstantArray.of(arrayType, elements);
-    }
-
-    private void handleLocalDefinition(Symbol symbol, boolean isConst, boolean isArray,
-                                       int arrayLen, ASTnode initNode, Integer constScalarValue) {
-        if (!isArray) {
-            Instruction alloca = new Instruction.AllocaInst(new IntegerType(32), currentBlock);
-            alloca.setName(nextReg());
-            symbol.setIrValue(alloca);
-            if (initNode != null) {
-                Value val;
-                if (isConst && constScalarValue != null) {
-                    val = new ConstantInt(constScalarValue);
-                } else if (isConst) {
-                    val = irVisit((ConstInitValNode) initNode);
-                } else {
-                    val = irVisit((InitValNode) initNode);
-                }
-                new Instruction.StoreInst(val, alloca, currentBlock);
-            }
-            return;
-        }
-
-        ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
-        Instruction alloca = new Instruction.AllocaInst(arrayType, currentBlock);
-        alloca.setName(nextReg());
-        symbol.setIrValue(alloca);
-
-        if (initNode == null) return;
-        if (isConst) initLocalArrayWithConst(alloca, initNode, arrayLen);
-        else initLocalArrayWithExprs(alloca, initNode, arrayLen);
-    }
-
-    private void handleStaticLocalDefinition(Symbol symbol, String name, boolean isConst,
-                                             boolean isArray, int arrayLen, ASTnode initNode,
-                                             Integer constScalarValue) {
-        String owner = currentFunction != null ? currentFunction.getName() : "global";
-        String globalName = "s_" + owner + "_" + name + "_" + symbol.getScopeId();
-
-        if (!isArray) {
-            Constant initVal;
-            if (constScalarValue != null) {
-                initVal = new ConstantInt(constScalarValue);
-            } else if (initNode != null) {
-                initVal = buildScalarConstant(initNode);
-            } else {
-                initVal = new ConstantInt(0);
-            }
-            GlobalVar globalVar = new GlobalVar(globalName, initVal, isConst);
-            module.addGlobalVar(globalVar);
-            symbol.setIrValue(globalVar);
-            return;
-        }
-
-        ArrayType arrayType = new ArrayType(new IntegerType(32), arrayLen);
-        Constant arrayInit = buildGlobalArrayInit(arrayType, initNode, arrayLen);
-        GlobalVar globalVar = new GlobalVar(globalName, arrayInit, isConst);
-        module.addGlobalVar(globalVar);
-        symbol.setIrValue(globalVar);
     }
 
     private void initLocalArrayWithExprs(Value basePtr, ASTnode initNode, int arrayLen) {
@@ -776,12 +821,17 @@ public class IRBuilder {
         String fmt = fmtNode.token.getValue();
         fmt = fmt.substring(1, fmt.length() - 1);
 
-        int expIdx = 0;
         ArrayList<EXPnode> exps = new ArrayList<>();
         for(ASTnode child : node.children) {
             if(child instanceof EXPnode) exps.add((EXPnode)child);
         }
 
+        ArrayList<Value> evaluatedValues = new ArrayList<>();
+        for (EXPnode exp : exps) {
+            evaluatedValues.add(irVisitExp(exp));
+        }
+
+        int expIdx = 0;
         StringBuilder segment = new StringBuilder();
         for (int i = 0; i < fmt.length(); i++) {
             char ch = fmt.charAt(i);
@@ -797,7 +847,7 @@ public class IRBuilder {
 
             if (ch == '%' && i + 1 < fmt.length() && fmt.charAt(i + 1) == 'd') {
                 emitStringSegment(segment);
-                Value val = irVisitExp(exps.get(expIdx++));
+                Value val = evaluatedValues.get(expIdx++);
                 ArrayList<Value> args = new ArrayList<>();
                 args.add(val);
                 new Instruction.CallInst(putintFunc, args, currentBlock).setName("");
@@ -814,7 +864,7 @@ public class IRBuilder {
     private Value irVisitLValAddr(LValNode node) {
         IdentNode ident = (IdentNode) node.children.get(0);
         String name = ident.token.getValue();
-        Symbol symbol = symbolTable.findSymbol(name);
+        Symbol symbol = findSymbolWithIR(name);
         Value basePtr = symbol != null ? symbol.getIrValue() : null;
         if (basePtr == null) {
             throw new RuntimeException("变量 " + name + " 未绑定IR指针");
@@ -858,7 +908,7 @@ public class IRBuilder {
 
     private Value loadOrDecayLVal(LValNode node) {
         IdentNode ident = (IdentNode) node.children.get(0);
-        Symbol symbol = symbolTable.findSymbol(ident.token.getValue());
+        Symbol symbol = findSymbolWithIR(ident.token.getValue());
         if (symbol == null) {
             throw new RuntimeException("变量 " + ident.token.getValue() + " 不存在于符号表");
         }
